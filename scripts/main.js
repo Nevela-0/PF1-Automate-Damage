@@ -112,7 +112,7 @@ function weaponReductionCalculation(itemSource, damageReductions, damageForType,
 function nonMagicalWeaponCalculation(hasMagicReduction, hasEpicReduction, magicReduction, epicReduction, damageForType, type, hasDR) {
     let reductionAmount = 0;
     for (let i = 0; i < hasDR.length; i++) {
-        if (!hasDR[i].types.includes(type)) {
+        if (!hasDR[i].types.includes(type) && (type == "slashing" || type == "piercing" || type == "bludgeoning")) {
             reductionAmount = hasDR[i].amount;
             break;
         }
@@ -142,7 +142,7 @@ function nonMagicalWeaponCalculation(hasMagicReduction, hasEpicReduction, magicR
 function magicalWeaponCalculation(hasEpicReduction, epicReduction, isMagic, damageForType, type, hasDR) {
     let reductionAmount = 0;
     for (let i = 0; i < hasDR.length; i++) {
-        if (!hasDR[i].types.includes(type)) {
+        if (!hasDR[i].types.includes(type) && (type == "slashing" || type == "piercing" || type == "bludgeoning")) {
             reductionAmount = hasDR[i].amount;
             break;
         }
