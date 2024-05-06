@@ -23,6 +23,7 @@ Manifest URL: https://github.com/Nevela-0/PF1-Automate-Damage/releases/latest/do
 Once the module is installed and enabled, it automatically enhances the damage calculation and application process in your PF1 games without requiring any additional configuration. Simply apply damage as usual, and the module will handle the rest.
 
 - When adding a custom Damage Reduction (DR) type or Elemental Resistance (ER) type to a token, remember to separate each type by a semicolon (;). The module can also handle operators (and\or) in the custom section. The amount can be before or after the type.
+
   **Examples**:
   5/Cold Iron and Silver; 10/Glass
   Magma or Frost/10; Poison/5
