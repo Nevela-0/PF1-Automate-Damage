@@ -28,6 +28,13 @@ Once the module is installed and enabled, it automatically enhances the damage c
   5/Cold Iron and Silver; 10/Glass
   Magma or Frost/10; Poison/5
 
+- The module will identify a weapon with an enhancement bonus greater than 0. If you possess a magical weapon lacking enhancement bonuses for attack and damage rolls (such as a flaming weapon), to bypass DR magic, ensure that the enhancement bonus in your weapon's details tab is set to 1. Additionally, in its attack actions, set the enhancement bonus override to 0.
+  ![image](https://github.com/Nevela-0/PF1-Automate-Damage/assets/165405732/fadaee56-b20e-47ae-b6f4-b7406ef89c4f)
+- When creating a macro or chat for damage rolls (using /d or /damage), you can specify a "type" for the damage using what the system refers to as "flavor," indicated by brackets after the damage. You can include multiple types by separating each type with a comma (,).
+  
+  For instance: `/d 3d6[Fire, Slashing]`.
+
+
 ## License
 
 This module is licensed under the [MIT License](https://github.com/Nevela-0/PF1-Automate-Damage/blob/main/LICENSE).
