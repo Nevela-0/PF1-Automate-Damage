@@ -1,77 +1,10 @@
 import {automateDamageConfig, registerSettings} from './config.js';
-
-
-function modifyElementStyles (element, pulsating=false) {
-    element.style.display = "inline-block";
-
-    if(pulsating) {
-        const keyframes = [
-            { transform: 'scale(1)' },
-            { transform: 'scale(1.1)' },
-            { transform: 'scale(1)' },
-          ];
-          
-          const options = {
-            duration: 600, 
-            iterations: Infinity,
-            easing: 'ease-in-out'
-          };
-
-          const animation = element.animate(keyframes, options);
-          animation.pause()
-          element.addEventListener('mouseenter',()=>{animation.play()});
-          element.addEventListener('mouseleave',()=>{animation.pause()});
-
-    } else {
-        element.addEventListener('mouseenter',()=>{element.style.transform = 'scale(1.1)'});
-        element.style.transition = "transform 150ms";
-        element.addEventListener('mouseleave',()=>{element.style.transform = 'scale(1)'});
-    };
-};
-
-function modifyElementAttributes (element, tooltipText) {
-    element.setAttribute("data-tooltip", tooltipText);
-};
-
-Hooks.on("renderChatLog", (app, html, data)=> {
-    const allMessages = html.children()[0].childNodes;
-    allMessages.forEach(message=>{
-        if(!message.querySelector) return;
-        const findChatAttack = message.querySelector('div.chat-attack');
-
-        if(!findChatAttack) return;
-
-        const findDamageButtonSection = findChatAttack.querySelector('tr.damage > th');
-        if(!findDamageButtonSection) return;
-
-        const heal = document.createElement('div');
-        heal.innerHTML = "❤️";
-
-        const healHalf = document.createElement('div');
-        healHalf.innerHTML = "🩹";
-
-        modifyElementStyles(heal, true);
-        modifyElementStyles(healHalf);
-        modifyElementAttributes(heal, "Heal");
-        modifyElementAttributes(healHalf, "Heal Half");
-
-        findDamageButtonSection.appendChild(heal);
-        findDamageButtonSection.appendChild(healHalf);
-        const originalApplyDamage = pf1.documents.actor.ActorPF.applyDamage;
-        const damage = findDamageButtonSection.querySelector('a[data-tooltip="PF1.Total')?.innerHTML?.trim();
-        if(!damage) return;
-        const config = {asNonLethal:false};
-        const healDamage = damage*-1;
-        heal.addEventListener('click',()=>{originalApplyDamage(healDamage,config)});
-        healHalf.addEventListener('click',()=>{originalApplyDamage(healDamage*0.5, config)});      
-    });
-});
-Hooks.once('ready', overrideApplyDamage);
+import { onRenderChatMessage } from '.buttons.js';
+Hooks.on("renderChatMessage", (app, html, data) => {onRenderChatMessage(html)});
+Hooks.once("ready", overrideApplyDamage);
 Hooks.once("setup", function() {
     registerSettings();
 });
-
-
 
 function overrideApplyDamage () {
     libWrapper.register('pf1-automate-damage', 'pf1.documents.item.ItemPF._onChatCardAction', interceptCardData, libWrapper.MIXED);
@@ -94,8 +27,8 @@ const targetInfo = {
 function interceptCardData(wrapped, actionName, elementObject) {
     if(actionName == "applyDamage") {
         targetInfo.id = elementObject.button.closest('.chat-message').getAttribute('data-message-id');
-        targetInfo.buttonType = elementObject.button.dataset.tooltip;
-        targetInfo.attackIndex = elementObject.button.closest('.chat-attack').getAttribute('data-index');
+        targetInfo.buttonType = elementObject.button.dataset.tooltip || elementObject.button.innerText;
+        targetInfo.attackIndex = elementObject.button.closest('.chat-attack')?.getAttribute('data-index');
     };
     return wrapped(actionName, elementObject);
 };
@@ -104,6 +37,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
     canvas.tokens.controlled.forEach(token => {
         let totalDamage = 0;
         const traits = token.actor.system.traits;
+        const abilities = token.actor.system.abilities // Used to apply ability damage \ drain \ penalty
         const eRes = traits.eres; // Energy resistances
         const damageImmunities = traits.di; // Damage Immunities
         const damageReductions = traits.dr; // Damage Reductions
@@ -115,11 +49,11 @@ function customApplyDamage(originalApplyDamage, value, config) {
         };
         const itemSource = game.messages.get(messageId).itemSource;
         const itemType = game.messages.get(messageId).itemSource?.type;
-        const damageMult = targetInfo.buttonType == "PF1.ApplyHalf" ? 0.5 : 1;
+        const damageMult = targetInfo.buttonType == "PF1.ApplyHalf" || targetInfo.buttonType == "Apply Half" ? 0.5 : 1;
         if (systemRolls?.attacks?.length > 0) {
             const attack = systemRolls.attacks[targetInfo.attackIndex];
             if (attack.damage?.length > 0) {
-                const attackDamage = JSON.parse(JSON.stringify(attack.damage));
+                const attackDamage = JSON.parse(JSON.stringify([...attack.damage, ...attack.critDamage]));
                 const {damageSortObjects, damageTypes} = sortDamage(attackDamage);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
@@ -143,16 +77,17 @@ function customApplyDamage(originalApplyDamage, value, config) {
         } else {
             systemRolls.forEach(roll => {
                 const attackDamage = JSON.parse(JSON.stringify(roll.terms));
-                const {damageSortObjects, damageTypes} = sortDamage(attackDamage);
+                const {damageSortObjects, damageTypes} = sortDamage(attackDamage, messageId);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
                 damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource);
         
                 attackDamage.forEach(damage => {
-                    let rolledDamage = Math.floor(damage.number * damageMult) || 0; // Default to 0 if total damage is not defined
+                    const healthFlag = game.messages.get(messageId).flags.pf1.subject.health == "damage" ? 1 : -1;
+                    let rolledDamage = Math.floor((damage.number * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
 
-                    totalDamage += Math.max(0, rolledDamage);
+                    totalDamage += rolledDamage;
                 });
             });
         };
@@ -178,13 +113,23 @@ function sortDamage(attackDamage) {
             damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
             return dmgNames;
         } else {
-            const dmgNames = damage.options.flavor.split(',').map(name => name.trim());
-            const damageAmount = damage.number;
-            dmgNames.forEach((name, i) => {
-                dmgNames[i] = name.trim().toLowerCase();
-            });
-            damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
-            return dmgNames;
+            if (!damage.options.flavor){
+                const dmgNames = ["untyped"]
+                const damageAmount = damage.number;
+                dmgNames.forEach((name, i) => {
+                    dmgNames[i] = name.trim().toLowerCase();
+                });
+                damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
+                return dmgNames;
+            } else {
+                const dmgNames = damage.options.flavor.split(',').map(name => name.trim());
+                const damageAmount = damage.number;
+                dmgNames.forEach((name, i) => {
+                    dmgNames[i] = name.trim().toLowerCase();
+                });
+                damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
+                return dmgNames;
+            }
         }
     }).flat();
     damageSortObjects.sort((a, b) => b.amount - a.amount);

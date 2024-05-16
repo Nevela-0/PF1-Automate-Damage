@@ -37,5 +37,4 @@ function update (...args) {
     });
 
     automateDamageConfig.weaponDamageTypes.push(...added_types);
-    console.log(automateDamageConfig);
 }
