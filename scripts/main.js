@@ -1,5 +1,5 @@
 import {automateDamageConfig, registerSettings} from './config.js';
-import { onRenderChatMessage } from '.buttons.js';
+import { onRenderChatMessage } from './buttons.js';
 Hooks.on("renderChatMessage", (app, html, data) => {onRenderChatMessage(html)});
 Hooks.once("ready", overrideApplyDamage);
 Hooks.once("setup", function() {
