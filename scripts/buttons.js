@@ -28,7 +28,7 @@ export function onRenderChatMessage(html) {
             const originalApplyDamage = pf1.documents.actor.ActorPF.applyDamage;
             const damage = section.querySelector('a[data-tooltip="PF1.Total')?.innerHTML?.trim();
             if (!damage) return;
-            const config = { asNonLethal: false };
+            const config = { asNonLethal: false, healing: true };
             const healDamage = damage * -1;
             heal.addEventListener('click', () => { originalApplyDamage(healDamage, config) });
             healHalf.addEventListener('click', () => { originalApplyDamage(healDamage * 0.5, config) });

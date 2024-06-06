@@ -10,7 +10,7 @@ function overrideApplyDamage () {
     libWrapper.register('pf1-automate-damage', 'pf1.documents.item.ItemPF._onChatCardAction', interceptCardData, libWrapper.MIXED);
 
     libWrapper.register('pf1-automate-damage', 'pf1.documents.actor.ActorPF.applyDamage', function (wrapped, value, config) {
-        if (canvas.tokens.controlled.length) {
+        if (canvas.tokens.controlled.length && !config.healing) {
             customApplyDamage(wrapped, value, config);
         } else {
             return wrapped(value, config);
