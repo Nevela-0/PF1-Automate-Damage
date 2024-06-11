@@ -21,14 +21,32 @@ function overrideApplyDamage () {
 const targetInfo = {
     id: "",
     buttonType: "",
-    attackIndex: ""
+    attackIndex: "",
+    isCritical: false,
+    isCriticalButton: false
 };
 
 function interceptCardData(wrapped, actionName, elementObject) {
-    if(actionName == "applyDamage") {
-        targetInfo.id = elementObject.button.closest('.chat-message').getAttribute('data-message-id');
+    if (actionName == "applyDamage" && elementObject.button) {
+        const chatMessage = elementObject.button.closest('.chat-message');
+        const chatAttack = elementObject.button.closest('.chat-attack');
+
+        if (chatMessage) {
+            targetInfo.id = chatMessage.getAttribute('data-message-id');
+        };
         targetInfo.buttonType = elementObject.button.dataset.tooltip || elementObject.button.innerText;
-        targetInfo.attackIndex = elementObject.button.closest('.chat-attack')?.getAttribute('data-index');
+        if (chatAttack) {
+            targetInfo.attackIndex = chatAttack.getAttribute('data-index');
+            const isCriticalConfirmation = chatAttack.querySelector('.attack-flavor.crit-confirm');
+            const isCriticalDamage = chatAttack.querySelector('.damage .inline-action[data-tooltip*="Critical Damage"]');
+            targetInfo.isCritical = !!isCriticalConfirmation || !!isCriticalDamage;
+            const damageElement = elementObject.button.closest('th');
+            if (damageElement && damageElement.textContent.includes('Critical Damage')) {
+                targetInfo.isCriticalButton = true;
+            } else {
+                targetInfo.isCriticalButton = false;
+            };
+        };
     };
     return wrapped(actionName, elementObject);
 };
@@ -53,7 +71,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
         if (systemRolls?.attacks?.length > 0) {
             const attack = systemRolls.attacks[targetInfo.attackIndex];
             if (attack.damage?.length > 0) {
-                const attackDamage = JSON.parse(JSON.stringify([...attack.damage, ...attack.critDamage]));
+                const attackDamage = targetInfo.isCriticalButton ? JSON.parse(JSON.stringify([...attack.damage, ...attack.critDamage])) : JSON.parse(JSON.stringify(attack.damage));
                 const {damageSortObjects, damageTypes} = sortDamage(attackDamage);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
@@ -179,13 +197,15 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             isMagic = (baseEnh || 0) + (stackingEnh || 0);
         } else {
             const magicFlag = itemSource.system.flags.boolean;
-            for (let key in magicFlag) {
-                if (key.toLowerCase() == "magic") {
-                    isMagic = 1;
-                    break;
-                } else {
-                    isMagic = itemSource.system.enh || 0;
+            if (Object.keys(magicFlag).length > 0 ) {
+                for (let key in magicFlag) {
+                    if (key.toLowerCase() == "magic") {
+                        isMagic = 1;
+                        break;
+                    };
                 };
+            } else {
+                isMagic = itemSource.system.enh || 0;
             };
         };
         biggestDamageTypePriority = isMagic;
@@ -199,10 +219,9 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
         };
     };
     
-    
     if(biggestDamageTypePriority>0) {
-        damagePriorityArray.splice(biggestDamageTypePriority,1);
-        damageTypes.push(damagePriorityArray.flat());
+        damagePriorityArray.splice(biggestDamageTypePriority+1);
+        damageTypes = damageTypes.concat(damagePriorityArray.flat());
     };
     
     const drValue = damageReductions.value;
