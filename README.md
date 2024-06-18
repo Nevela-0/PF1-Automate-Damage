@@ -28,11 +28,7 @@ Once the module is installed and enabled, it automatically enhances the damage c
   - 5/Cold Iron and Silver; 10/Glass
   - Magma or Frost/10; Poison/5
   
-- The module will identify a weapon with an enhancement bonus greater than 0 . If you possess a magical weapon lacking enhancement bonuses for attack and damage rolls (such as a claws gained from the sorcerer's draconic bloodline), to bypass DR magic, you can add a new boolean flag to the attack and name it "Magic".
-  
-  ![image](https://github.com/Nevela-0/PF1-Automate-Damage/assets/165405732/c0926b63-9c0e-40e0-8c37-76ad168a9550)
-
-  
+- The module will identify a weapon with an enhancement bonus greater than 0. If you possess a magical weapon lacking enhancement bonuses for attack and damage rolls (such as claws gained from the sorcerer's draconic bloodline), to bypass DR magic, you can check the magic checkbox in the attack's detail tab.
 - When creating a macro or chat for damage rolls (using /d or /damage), you can specify a "type" for the damage using what the system refers to as "flavor," indicated by brackets after the damage. You can include multiple types by separating each type with a comma (,). 
   
   **Example**:
