@@ -25,16 +25,25 @@ function update (...args) {
     }
     automateDamageConfig.weaponDamageTypes = defaultTypes;
     if(args[0]?.length==0) return;
-    const added_types = JSON.parse(args[0]);
-    if(added_types.length<1) return ui.notification.error('Bad weapon type format.');
-    added_types.forEach((types,i)=>{
-        types.forEach((type,n)=>{
-            types[i][n] = type.trim().toLowerCase();
-        })
+    try {
+        const jsonString = args[0].replace(/'/g, '"');
 
-        types = types.filter(type=>type!="");
-        types = types.filter((type, pos)=>types.indexOf(type)===pos);
-    });
+        let added_types = JSON.parse(jsonString);
+        if(added_types.length<1) return ui.notification.error('Bad weapon type format.');
+        for(let i=0;i<added_types.length;i++) {
+            let types = added_types[i];
+            for(let n=0;n<types.length;n++) {
+                added_types[i][n] = types[n].trim().toLowerCase();
+            }
 
-    automateDamageConfig.weaponDamageTypes.push(...added_types);
+            added_types[i] = types.filter(type=>type!="");
+            added_types[i] = types.filter((type, pos)=>types.indexOf(type)===pos);
+        }
+
+        console.log(added_types);
+        automateDamageConfig.weaponDamageTypes.push(...added_types);
+    } catch(e) {
+        console.log(`There was an error parsing the new damage types! ` +e);
+    }
+
 }

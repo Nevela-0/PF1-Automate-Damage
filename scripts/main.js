@@ -55,7 +55,6 @@ function customApplyDamage(originalApplyDamage, value, config) {
     canvas.tokens.controlled.forEach(token => {
         let totalDamage = 0;
         const traits = token.actor.system.traits;
-        const abilities = token.actor.system.abilities // Used to apply ability damage \ drain \ penalty
         const eRes = traits.eres; // Energy resistances
         const damageImmunities = traits.di; // Damage Immunities
         const damageReductions = traits.dr; // Damage Reductions
@@ -191,19 +190,20 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
     const damagePriorityArray = [...automateDamageConfig.weaponDamageTypes];
     let biggestDamageTypePriority = 0;
     if((itemSource?.type == "attack" && (itemSource?.subType == "weapon" || itemSource?.subType == "natural")) || itemSource?.type == "weapon") {
+        const weaponMaterial = itemSource.system.material.normal.value;
+        if (weaponMaterial && typeof weaponMaterial == 'string') {
+            damageTypes.push(weaponMaterial.toLowerCase().trim());
+        }
         let isMagic = 0;
         if ((itemSource?.['ckl-roll-bonuses'] ?? {}).hasOwnProperty('enhancement')) {
             const { baseEnh, stackingEnh } = itemSource['ckl-roll-bonuses'].enhancement;
             isMagic = (baseEnh || 0) + (stackingEnh || 0);
         } else {
-            const magicFlag = itemSource.system.flags.boolean;
-            if (Object.keys(magicFlag).length > 0 ) {
-                for (let key in magicFlag) {
-                    if (key.toLowerCase() == "magic") {
-                        isMagic = 1;
-                        break;
-                    };
-                };
+            const magicBox = itemSource.system.material.addon;
+            if (magicBox.includes("magic")) {
+                isMagic = 1;
+            } else if (magicBox.includes("epic") && itemSource.system.enh >= 6) {
+                isMagic = Math.max(6, itemSource.system.enh);
             } else {
                 isMagic = itemSource.system.enh || 0;
             };
@@ -298,7 +298,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
 };
 
 function damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects) {
-    const diCustom = damageImmunities.custom.split(';').map(name => name.toLowerCase());
+    const diCustom = damageImmunities.custom.map(name => name.toLowerCase());
 
     damageSortObjects.forEach(object => {
         object.names.forEach(type => {
@@ -315,7 +315,7 @@ function damageImmunityCalculation(damageImmunities, attackDamage, damageSortObj
 };
 
 function damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects) {
-    const dvCustom = damageVulnerabilities.custom.split(';').map(name => name.toLowerCase());
+    const dvCustom = damageVulnerabilities.custom.map(name => name.toLowerCase());
 
     damageSortObjects.forEach(object => {
         object.names.forEach(type=>{
