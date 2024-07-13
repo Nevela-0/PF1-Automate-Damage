@@ -1,7 +1,19 @@
+//import { DamageTypeSelector } from './damage-type-selector.js';
 import {automateDamageConfig, registerSettings} from './config.js';
 import { onRenderChatMessage } from './buttons.js';
+
+// Create a configuration window for the module to allow users to insert their own custom damage types
+// When adding a new damage type have a boolean for energy damage types. "Nonmagical" and "Magical".
+// Add hardness to the DR logic
+// Find out if it's viable to apply ability damage (line "const abilities = token.actor.system.abilities")
+// If applying ability damage is viable, create new damage types for the system for each ability
+// Some creature traits could be handled (critical immune creatures can ignore the extra damage if the attack was a critical)
+
 Hooks.on("renderChatMessage", (app, html, data) => {onRenderChatMessage(html)});
-Hooks.once("ready", overrideApplyDamage);
+Hooks.once("ready", () => {
+    overrideApplyDamage();
+    //new DamageTypeSelector().render(true);
+});
 Hooks.once("setup", function() {
     registerSettings();
 });
@@ -55,11 +67,13 @@ function customApplyDamage(originalApplyDamage, value, config) {
     canvas.tokens.controlled.forEach(token => {
         let totalDamage = 0;
         const traits = token.actor.system.traits;
+        const abilities = token.actor.system.abilities // Used to apply ability damage \ drain \ penalty
         const eRes = traits.eres; // Energy resistances
         const damageImmunities = traits.di; // Damage Immunities
         const damageReductions = traits.dr; // Damage Reductions
         const damageVulnerabilities = traits.dv; // Damage Vulnerabilities
         const messageId = targetInfo.id;
+        const message = game.messages.get(messageId)
         let systemRolls = game.messages.get(messageId).systemRolls;
         if(Object.keys(systemRolls).length == 0 && systemRolls.constructor == Object && game.messages.get(messageId).rolls) {
             systemRolls = game.messages.get(messageId).rolls;
@@ -71,11 +85,11 @@ function customApplyDamage(originalApplyDamage, value, config) {
             const attack = systemRolls.attacks[targetInfo.attackIndex];
             if (attack.damage?.length > 0) {
                 const attackDamage = targetInfo.isCriticalButton ? JSON.parse(JSON.stringify([...attack.damage, ...attack.critDamage])) : JSON.parse(JSON.stringify(attack.damage));
-                const {damageSortObjects, damageTypes} = sortDamage(attackDamage);
+                const {damageSortObjects, damageTypes, itemAction} = sortDamage(attackDamage, itemSource, message);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
-                damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource);
+                damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message);
                 attackDamage.forEach(damage => {
                     const damageTypes = damage.options?.damageType?.values || [];
                     const customDamageTypeValue = damage.options?.damagetype?.custom?.trim() || "";
@@ -112,9 +126,12 @@ function customApplyDamage(originalApplyDamage, value, config) {
     });
 };
 
-function sortDamage(attackDamage) {
+function sortDamage(attackDamage, itemSource, message) {
     // Handle Actual Reduction from incoming damage
     const damageSortObjects = [];
+    const dataActionId = message.flags.pf1.metadata.action;
+    const itemAction = [];
+    
     const damageTypes = attackDamage.map((damage, index) => {
         if(damage.options.damageType) {
             const dmgNames = damage.options.damageType.values;
@@ -123,6 +140,95 @@ function sortDamage(attackDamage) {
                 customNames = customNames.split(',').map(name => name.trim()); // Split by comma and trim whitespace
                 dmgNames.push(...customNames); // Add custom names to dmgNames array
             }
+            const alignments = itemSource?.system?.alignments;
+            const materials = itemSource?.system?.material;
+            // Check if the actions of the item have override value settings
+            if (itemSource.actions.size >= 1) {
+                const actionIds = [];
+                const itemActions = [];
+
+                for (const [id, action] of itemSource.actions.entries()) {
+                    actionIds.push(id);
+                    itemActions.push(action);
+
+                    if (id == dataActionId) {
+                        itemAction.push(action);
+                    };
+                };
+                const hasAmmo = itemSource.system.ammo;
+                const rangedAction = itemAction[0].isRanged
+                if (hasAmmo.type !== "" && rangedAction) {
+                    let parser = new DOMParser();
+                    let doc = parser.parseFromString(message.content, 'text/html');
+                    let ammoElement = doc.querySelector('[data-ammo-id]');
+                    let ammoId = ammoElement ? ammoElement.getAttribute('data-ammo-id') : null;
+                    const ammoItem = itemSource.parent.items.get(ammoId);
+                    const ammoAddons = ammoItem.system.flags.dictionary;
+                    for (let addon in ammoAddons) {
+                        if (addon.toLowerCase() == "material" || addon.toLowerCase() == "alignment") {
+                            dmgNames.push(ammoAddons[addon].toLowerCase());
+                        };
+                    };
+                } else {
+                    const overrideMaterials = itemAction[0].data.material.normal.value;
+                    const overrideAddons = itemAction[0].data.material.addon;
+                    const overrideAlignments = itemAction[0].data.alignments;
+                    if (overrideAlignments && Object.values(overrideAlignments).some(value => value !== null)) {
+                        for (const [alignment, value] of Object.entries(overrideAlignments)) {
+                            if (value === true && alignments[alignment] === false) {
+                                // From false to true, add to dmgNames
+                                dmgNames.push(alignment);
+                            } else if (value === null && alignments[alignment] === true) {
+                                // Original true and override is null, add to dmgNames
+                                dmgNames.push(alignment);
+                            };
+                        };
+                    };
+                
+                    // Add remaining true alignments from the original alignments if not overridden by false
+                    for (const [alignment, value] of Object.entries(alignments || {})) {
+                        if (value === true && !(overrideAlignments && overrideAlignments[alignment] === false)) {
+                            if (!dmgNames.includes(alignment)) {
+                                dmgNames.push(alignment);
+                            };
+                        };
+                    };
+                    if (overrideMaterials && overrideMaterials.trim() !== "") {
+                        if (itemAction[0]?.data?.material?.custom) {
+                            const customMaterials = overrideMaterials.split(',').map(name => name.trim().toLowerCase());
+                            dmgNames.push(...customMaterials);
+                        } else {
+                            dmgNames.push(overrideMaterials);
+                        }
+                    } else {
+                        if (materials?.normal?.value) {
+                            if (!materials.normal.custom) {
+                                const material = materials.normal.value;
+                                dmgNames.push(material);
+                            } else {
+                                const customMaterials = materials.normal.value.split(',').map(name => name.trim().toLowerCase());
+                                dmgNames.push(...customMaterials);
+                            }
+                        }
+                    };
+    
+                    if (materials.addon.length > 0) {
+                        materials.addon.forEach(addon => {
+                            if (!dmgNames.includes(addon)) {
+                                dmgNames.push(addon);
+                            }
+                        });
+                    };
+                    
+                    if (overrideAddons.length > 0) {
+                        overrideAddons.forEach(addon => {
+                            if (!dmgNames.includes(addon)) {
+                                dmgNames.push(addon);
+                            };
+                        });
+                    };
+                };
+            };
             const damageAmount = damage.total;
             dmgNames.forEach((name, i) => {
                 dmgNames[i] = name.trim().toLowerCase();
@@ -151,12 +257,12 @@ function sortDamage(attackDamage) {
     }).flat();
     damageSortObjects.sort((a, b) => b.amount - a.amount);
 
-    return { damageSortObjects, damageTypes };
+    return { damageSortObjects, damageTypes, itemAction };
 }
 
 
 
-function damageReductionCalculation (attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource) { 
+function damageReductionCalculation (attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message) {
     //Get Character Damage reduction
     const drCustom = damageReductions.custom.split(';');
     const totalDR = [];
@@ -165,7 +271,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
         const andOrRegex = /\b(and|or)\b/;
         const damageAmount = /\d+/;
 
-        const object = drCustom.forEach(string=>{
+        drCustom.forEach(string=>{
         const regexResult = string.match(andOrRegex);
         const damageAmountResult = string.match(damageAmount);
         if(!damageAmountResult) return console.warn('Amount missing from reduction');
@@ -190,25 +296,43 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
     const damagePriorityArray = [...automateDamageConfig.weaponDamageTypes];
     let biggestDamageTypePriority = 0;
     if((itemSource?.type == "attack" && (itemSource?.subType == "weapon" || itemSource?.subType == "natural")) || itemSource?.type == "weapon") {
-        const weaponMaterial = itemSource.system.material.normal.value;
-        if (weaponMaterial && typeof weaponMaterial == 'string') {
-            damageTypes.push(weaponMaterial.toLowerCase().trim());
-        }
-        let isMagic = 0;
-        if ((itemSource?.['ckl-roll-bonuses'] ?? {}).hasOwnProperty('enhancement')) {
-            const { baseEnh, stackingEnh } = itemSource['ckl-roll-bonuses'].enhancement;
-            isMagic = (baseEnh || 0) + (stackingEnh || 0);
-        } else {
-            const magicBox = itemSource.system.material.addon;
-            if (magicBox.includes("magic")) {
-                isMagic = 1;
-            } else if (magicBox.includes("epic") && itemSource.system.enh >= 6) {
-                isMagic = Math.max(6, itemSource.system.enh);
+        let enhBonus = 0;
+        const actionEnhBonus = itemAction[0].enhancementBonus;
+        const addons = itemSource.system.material.addon;
+        const hasAmmo = itemSource.system.ammo;
+        const rangedAction = itemAction[0].isRanged
+        if (hasAmmo.type !== "" && rangedAction) { // Check if the action is a ranged attack done with ammo
+            let parser = new DOMParser();
+            let doc = parser.parseFromString(message.content, 'text/html');
+            let ammoElement = doc.querySelector('[data-ammo-id]');
+            let ammoId = ammoElement ? ammoElement.getAttribute('data-ammo-id') : null;
+            const ammoItem = itemSource.parent.items.get(ammoId);
+            let ckl = ammoItem?.['ckl-roll-bonuses'] ?? {};
+            if (ckl.hasOwnProperty('ammo-enhancement') || ckl.hasOwnProperty('ammo-enhancement-stacks')) {
+                const enh = +ckl['ammo-enhancement'] || 0;
+                const stacks = +ckl['ammo-enhancement-stacks'] || 0;
+                enhBonus = enh + stacks;
+            } else if (actionEnhBonus > 0) {
+                enhBonus = 1;
             } else {
-                isMagic = itemSource.system.enh || 0;
+                const magicFlag = ammoItem.system.flags.boolean;
+                for (let key in magicFlag) {
+                    if (key.toLowerCase() == "magic") {
+                        enhBonus = 1;
+                        break;
+                    };
+                };
+            };
+        } else { 
+            if (addons.includes("magic")) {
+                enhBonus = 1;
+            } else if (addons.includes("epic") && actionEnhBonus >= 6) {
+                enhBonus = Math.max(6, actionEnhBonus);
+            } else {
+                enhBonus = actionEnhBonus || 0;
             };
         };
-        biggestDamageTypePriority = isMagic;
+        biggestDamageTypePriority = enhBonus;
     } else {
         for(let i=damagePriorityArray.length-1;i>-1;i--) {
             const currentPrioritySegment = damagePriorityArray[i];
@@ -277,7 +401,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                             const currentDamageSortObject = damageSortObjects[i];
                             for(let t=0;t<allWeaponDamageTypes.length;t++) {
                                 const currentWeaponDamageType = allWeaponDamageTypes[t];
-                                if(currentDamageSortObject.names.includes(currentWeaponDamageType)) {
+                                if(currentDamageSortObject.names.includes(currentWeaponDamageType)) { // without pushing the damage types with the if statements above, a weapon with an enhancement bonus of 1 does not bypass the types it's supposed to. I had to hard code the types above to make sure the script sees them in the damage types.
                                     found = true;
                                     if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
                                         attackDamage[currentDamageSortObject.index].total = Math.max(0, attackDamage[currentDamageSortObject.index].total-dr.amount);
@@ -335,7 +459,6 @@ function damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, dam
 
 function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects) {
     const erCustom = eRes.custom.split(';').map(name => name.toLowerCase());
-    //const customDamageTypes = damageTypes.split(';');
 
     const totalER = [];
     if (erCustom.length > 0 && erCustom[0].length > 0) {

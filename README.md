@@ -22,21 +22,28 @@ Manifest URL: https://github.com/Nevela-0/PF1-Automate-Damage/releases/latest/do
 
 Once the module is installed and enabled, it automatically enhances the damage calculation and application process in your PF1 games without requiring any additional configuration. Simply apply damage as usual, and the module will handle the rest.
 
+### Damage Reduction
+
 - When adding a custom Damage Reduction (DR) type or Elemental Resistance (ER) type to a token, remember to separate each type by a semicolon (;). The module can also handle operators (and\or) in the custom section. The amount can be before or after the type.
 
   **Examples**:
   - 5/Cold Iron and Silver; 10/Glass
   - Magma or Frost/10; Poison/5
   
-- The module will identify a weapon with an enhancement bonus greater than 0 . If you possess a magical weapon lacking enhancement bonuses for attack and damage rolls (such as a claws gained from the sorcerer's draconic bloodline), to bypass DR magic, you can add a new boolean flag to the attack and name it "Magic".
-  
-  ![image](https://github.com/Nevela-0/PF1-Automate-Damage/assets/165405732/c0926b63-9c0e-40e0-8c37-76ad168a9550)
+- The module will identify a weapon with an enhancement bonus greater than 0. If you possess a magical weapon lacking enhancement bonuses for attack and damage rolls (such as claws gained from the sorcerer's draconic bloodline), to bypass DR magic, you can check the magic checkbox in the attack's detail tab.
 
-  
+### Notes
+- **Silver and Alchemical Silver are treated as the same material.** If you add Silver as a custom material it will not bypass the Silver DR from the system. You will have to add a custom DR with the same name for that.
+
+### Damage Roll Cards
 - When creating a macro or chat for damage rolls (using /d or /damage), you can specify a "type" for the damage using what the system refers to as "flavor," indicated by brackets after the damage. You can include multiple types by separating each type with a comma (,). 
   
   **Example**:
   - /d 3d6[Fire, Slashing].
+
+### Ammunition
+- **Material**: Since ammunition does not have material supported by PF1E system yet, you can add a dictionary flag named "Material" with a value of the material you want the ammo to be. You can add magic in this dictionary flag to treat the ammo as magic to overcome DR in case it does not have enhancement bonus.
+- **Enhancement Bonus**: Ammunition also does not have enhancement yet, so I would recommend checking out [Roll Bonuses](https://github.com/dmrickey/fvtt-ckl-roll-bonuses) to add those to the ammo. However, if you do not use Roll Bonuses, you can add a booealn flag in the ammo named "Magic" and that will treat the ammo as magic to overcome magic DR.
 
 ## License
 
