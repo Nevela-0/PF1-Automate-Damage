@@ -67,7 +67,6 @@ function customApplyDamage(originalApplyDamage, value, config) {
     canvas.tokens.controlled.forEach(token => {
         let totalDamage = 0;
         const traits = token.actor.system.traits;
-        const abilities = token.actor.system.abilities // Used to apply ability damage \ drain \ penalty
         const eRes = traits.eres; // Energy resistances
         const damageImmunities = traits.di; // Damage Immunities
         const damageReductions = traits.dr; // Damage Reductions
@@ -107,7 +106,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
             };
         } else {
             systemRolls.forEach(roll => {
-                const attackDamage = JSON.parse(JSON.stringify(roll.terms));
+                const attackDamage = JSON.parse(JSON.stringify(roll?.terms));
                 const {damageSortObjects, damageTypes} = sortDamage(attackDamage, messageId);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
@@ -115,7 +114,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
                 damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource);
         
                 attackDamage.forEach(damage => {
-                    const healthFlag = game.messages.get(messageId).flags.pf1.subject.health == "damage" ? 1 : -1;
+                    const healthFlag = game.messages.get(messageId).flags?.pf1?.subject?.health == "damage" ? 1 : -1;
                     let rolledDamage = Math.floor((damage.number * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
 
                     totalDamage += rolledDamage;
@@ -129,7 +128,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
 function sortDamage(attackDamage, itemSource, message) {
     // Handle Actual Reduction from incoming damage
     const damageSortObjects = [];
-    const dataActionId = message.flags.pf1.metadata.action;
+    const dataActionId = message.flags?.pf1?.metadata?.action;
     const itemAction = [];
     
     const damageTypes = attackDamage.map((damage, index) => {
@@ -155,24 +154,24 @@ function sortDamage(attackDamage, itemSource, message) {
                         itemAction.push(action);
                     };
                 };
-                const hasAmmo = itemSource.system.ammo;
-                const rangedAction = itemAction[0].isRanged
-                if (hasAmmo.type !== "" && rangedAction) {
+                const hasAmmo = itemSource.system?.ammo;
+                const rangedAction = itemAction[0]?.isRanged
+                if (hasAmmo?.type !== "" && rangedAction) {
                     let parser = new DOMParser();
                     let doc = parser.parseFromString(message.content, 'text/html');
                     let ammoElement = doc.querySelector('[data-ammo-id]');
                     let ammoId = ammoElement ? ammoElement.getAttribute('data-ammo-id') : null;
                     const ammoItem = itemSource.parent.items.get(ammoId);
-                    const ammoAddons = ammoItem.system.flags.dictionary;
+                    const ammoAddons = ammoItem?.system?.flags?.dictionary;
                     for (let addon in ammoAddons) {
                         if (addon.toLowerCase() == "material" || addon.toLowerCase() == "alignment") {
                             dmgNames.push(ammoAddons[addon].toLowerCase());
                         };
                     };
                 } else {
-                    const overrideMaterials = itemAction[0].data.material.normal.value;
-                    const overrideAddons = itemAction[0].data.material.addon;
-                    const overrideAlignments = itemAction[0].data.alignments;
+                    const overrideMaterials = itemAction[0]?.data?.material?.normal?.value;
+                    const overrideAddons = itemAction[0]?.data?.material?.addon;
+                    const overrideAlignments = itemAction[0]?.data?.alignments;
                     if (overrideAlignments && Object.values(overrideAlignments).some(value => value !== null)) {
                         for (const [alignment, value] of Object.entries(overrideAlignments)) {
                             if (value === true && alignments[alignment] === false) {
@@ -212,7 +211,7 @@ function sortDamage(attackDamage, itemSource, message) {
                         }
                     };
     
-                    if (materials.addon.length > 0) {
+                    if (materials?.addon?.length > 0) {
                         materials.addon.forEach(addon => {
                             if (!dmgNames.includes(addon)) {
                                 dmgNames.push(addon);
@@ -220,7 +219,7 @@ function sortDamage(attackDamage, itemSource, message) {
                         });
                     };
                     
-                    if (overrideAddons.length > 0) {
+                    if (overrideAddons?.length > 0) {
                         overrideAddons.forEach(addon => {
                             if (!dmgNames.includes(addon)) {
                                 dmgNames.push(addon);
@@ -236,7 +235,7 @@ function sortDamage(attackDamage, itemSource, message) {
             damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
             return dmgNames;
         } else {
-            if (!damage.options.flavor){
+            if (!damage.options?.flavor){
                 const dmgNames = ["untyped"]
                 const damageAmount = damage.number;
                 dmgNames.forEach((name, i) => {
@@ -245,7 +244,7 @@ function sortDamage(attackDamage, itemSource, message) {
                 damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
                 return dmgNames;
             } else {
-                const dmgNames = damage.options.flavor.split(',').map(name => name.trim());
+                const dmgNames = damage.options?.flavor.split(',').map(name => name.trim());
                 const damageAmount = damage.number;
                 dmgNames.forEach((name, i) => {
                     dmgNames[i] = name.trim().toLowerCase();
@@ -297,16 +296,17 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
     let biggestDamageTypePriority = 0;
     if((itemSource?.type == "attack" && (itemSource?.subType == "weapon" || itemSource?.subType == "natural")) || itemSource?.type == "weapon") {
         let enhBonus = 0;
-        const actionEnhBonus = itemAction[0].enhancementBonus;
-        const addons = itemSource.system.material.addon;
-        const hasAmmo = itemSource.system.ammo;
-        const rangedAction = itemAction[0].isRanged
-        if (hasAmmo.type !== "" && rangedAction) { // Check if the action is a ranged attack done with ammo
+        const actionEnhBonus = itemAction[0]?.enhancementBonus;
+        const addons = itemSource.system.material?.addon;
+        const hasAmmo = itemSource.system?.ammo;
+        const rangedAction = itemAction[0]?.isRanged
+        if (hasAmmo?.type !== "" && rangedAction) { // Check if the action is a ranged attack done with ammo
             let parser = new DOMParser();
             let doc = parser.parseFromString(message.content, 'text/html');
             let ammoElement = doc.querySelector('[data-ammo-id]');
             let ammoId = ammoElement ? ammoElement.getAttribute('data-ammo-id') : null;
             const ammoItem = itemSource.parent.items.get(ammoId);
+            // game.modules.get('ckl-roll-bonuses').api.utils.getEnhancementBonusForAction({ ammo, action }) <= Use this instead
             let ckl = ammoItem?.['ckl-roll-bonuses'] ?? {};
             if (ckl.hasOwnProperty('ammo-enhancement') || ckl.hasOwnProperty('ammo-enhancement-stacks')) {
                 const enh = +ckl['ammo-enhancement'] || 0;
@@ -315,7 +315,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             } else if (actionEnhBonus > 0) {
                 enhBonus = 1;
             } else {
-                const magicFlag = ammoItem.system.flags.boolean;
+                const magicFlag = ammoItem.system?.flags?.boolean;
                 for (let key in magicFlag) {
                     if (key.toLowerCase() == "magic") {
                         enhBonus = 1;

@@ -2,7 +2,7 @@
   "id": "pf1-automate-damage",
   "title": "PF1 Automate Damage",
   "description": "Automate Damage is a module for Foundry Virtual Tabletop (FoundryVTT) designed to enhance and streamline the damage calculation and application process for Pathfinder First Edition (PF1) games.",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "url": "https://github.com/Nevela-0/PF1-Automate-Damage",
   "compatibility": {
     "minimum": "11",
@@ -35,5 +35,5 @@
     }
   ],
   "manifest": "https://github.com/Nevela-0/PF1-Automate-Damage/releases/latest/download/module.json",
-  "download": "https://github.com/Nevela-0/PF1-Automate-Damage/releases/download/beta-0.9.4/PF1-Automate-Damage.zip"
+  "download": "https://github.com/Nevela-0/PF1-Automate-Damage/releases/download/beta-0.9.5/PF1-Automate-Damage.zip"
 }

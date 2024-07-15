@@ -1,6 +1,6 @@
 export function onRenderChatMessage(html) {
-    const messages = html[0].querySelectorAll('div.chat-attack');
-    if (!messages.length) return;
+    const messages = html[0]?.querySelectorAll('div.chat-attack');
+    if (!messages?.length) return;
         messages.forEach(message=>{
         const sections = message.querySelectorAll('tr.damage > th, th.attack-damage');
         sections.forEach((section) => {
@@ -37,8 +37,8 @@ export function onRenderChatMessage(html) {
 }
 
 function modifyElementStyles (element, pulsating=false) {
-    element.style.visibility="hidden";
-    element.style.display="inline-block";
+    element?.style?.visibility="hidden";
+    element?.style?.display="inline-block";
 
     if(pulsating) {
         const keyframes = [
@@ -67,5 +67,5 @@ function modifyElementStyles (element, pulsating=false) {
 };
 
 function modifyElementAttributes (element, tooltipText) {
-    element.setAttribute("data-tooltip", tooltipText);
+    element?.setAttribute("data-tooltip", tooltipText);
 };
