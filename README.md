@@ -37,8 +37,6 @@ Once the module is installed and enabled, it automatically enhances the damage c
 - **Silver and Alchemical Silver are treated as the same material.** If you add Silver as a custom material it will not bypass the Silver DR from the system. You will have to add a custom DR with the same name for that.
 
 ### Damage Roll Cards
-=======
->>>>>>> aa184e944f0e0806d11e11c24e34941bd58c4007
 - When creating a macro or chat for damage rolls (using /d or /damage), you can specify a "type" for the damage using what the system refers to as "flavor," indicated by brackets after the damage. You can include multiple types by separating each type with a comma (,). 
   
   **Example**:
