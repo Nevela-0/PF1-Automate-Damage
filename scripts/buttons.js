@@ -37,8 +37,8 @@ export function onRenderChatMessage(html) {
 }
 
 function modifyElementStyles (element, pulsating=false) {
-    element?.style?.visibility="hidden";
-    element?.style?.display="inline-block";
+    element.style.visibility="hidden";
+    element.style.display="inline-block";
 
     if(pulsating) {
         const keyframes = [
@@ -67,5 +67,5 @@ function modifyElementStyles (element, pulsating=false) {
 };
 
 function modifyElementAttributes (element, tooltipText) {
-    element?.setAttribute("data-tooltip", tooltipText);
+    element.setAttribute("data-tooltip", tooltipText);
 };
