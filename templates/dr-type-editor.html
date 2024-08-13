@@ -1,0 +1,38 @@
+<form autocomplete="off">
+    <div class="header-container">
+        <table>
+            <thead>
+                <tr>
+                    <th class="header">{{localize "FORM.drTypeEditor.labels.drTypes"}}</th>
+                    <th class="entry-control"></th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <table>
+        <tbody class="dr-type-container">
+            {{#each drTypes as |type index|}}
+            <tr class="entry" data-index="{{index}}">
+                <td>
+                    <input type="text" class="textarea" data-index="{{index}}" value="{{type}}" name="type-{{index}}" disabled>
+                </td>
+                <td class="entry-control">
+                    <a class="entry-control delete-entry remove-type" data-index="{{index}}"><i class="fas fa-minus"></i></a>
+                </td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+    <div class="add-type-container">
+        <select id="new-type-select" class="dr-type-select">
+            <option value="" disabled selected>{{localize "FORM.drTypeEditor.options.selectType"}}</option>
+            {{#each availableTypes}}
+            <option value="{{this}}">{{this}}</option>
+            {{/each}}
+        </select>
+        <input type="text" id="custom-type-input" class="input" placeholder="{{localize 'FORM.drTypeEditor.placeholders.customType'}}" style="display: none;">
+        <a class="entry-control add-entry add-type"><i class="fas fa-plus"></i> {{localize "FORM.drTypeEditor.buttons.addType"}}</a>
+    </div>
+    <button type="submit" class="save-button" name="submit" value="1"><i class="far fa-save"></i> {{localize "FORM.drTypeEditor.buttons.save"}}</button>
+</form>
+

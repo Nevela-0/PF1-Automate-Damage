@@ -1,0 +1,259 @@
+<form class="damage-type-form">
+    <div class="form-group field-group">
+        <label for="name">{{localize "FORM.damageTypeForm.labels.name"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.name'}}"></i>
+        </label>
+        <input type="text" name="name" value="" placeholder="{{localize 'FORM.damageTypeForm.placeholders.name'}}" class="input" style="margin-left: 0.3rem;">
+    </div>
+    <div class="form-group field-group">
+        <label for="img">{{localize "FORM.damageTypeForm.labels.img"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.img'}}"></i>
+        </label>
+        <div class="input-group">
+            <input type="hidden" name="img" value="" data-dtype="String" class="input">
+            <button type="button" class="file-picker btn" data-type="image" data-target="img">{{localize "BUTTONS.browse"}}</button>
+        </div>
+    </div>
+    <div class="form-group field-group">
+        <label for="category">{{localize "FORM.damageTypeForm.labels.category"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.category'}}"></i>
+        </label>
+        <div class="input-group radio-buttons" style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            <div class="radio-group">
+                <input type="radio" id="physical" name="category" value="physical">
+                <label for="physical">{{localize "FORM.damageTypeForm.labels.categoryPhysical"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="energy" name="category" value="energy">
+                <label for="energy">{{localize "FORM.damageTypeForm.labels.categoryEnergy"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="misc" name="category" value="misc">
+                <label for="misc">{{localize "FORM.damageTypeForm.labels.categoryMisc"}}</label>
+            </div>
+            <input type="text" name="custom-category" placeholder="{{localize 'FORM.damageTypeForm.placeholders.customCategory'}}" class="input" style="width: 100%;">
+        </div>
+    </div>
+    <div class="form-group field-group">
+        <label for="abbr">{{localize "FORM.damageTypeForm.labels.abbr"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.abbr'}}"></i>
+        </label>
+        <input type="text" name="abbr" value="" placeholder="{{localize 'FORM.damageTypeForm.placeholders.abbr'}}" class="input" style="margin-left: 0.3rem;">
+    </div>
+    <div class="form-group field-group">
+        <label for="icon">{{localize "FORM.damageTypeForm.labels.icon"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.icon'}}"></i>
+        </label>
+        <div class="input-group" style="display: flex; align-items: center;">
+            <input type="text" name="icon" value="" placeholder="{{localize 'FORM.damageTypeForm.placeholders.icon'}}" class="input" style="flex: 1;">
+            <input type="color" name="color" value="#000000" class="color-picker" style="width: 25px; height: 24px;">
+        </div>
+    </div>
+    <div class="form-group field-group">
+        <label for="isModifier">{{localize "FORM.damageTypeForm.labels.isModifier"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.isModifier'}}"></i>
+        </label>
+        <input type="checkbox" name="isModifier" class="checkbox">
+    </div>
+    <div class="form-group field-group">
+        <label for="flag">{{localize "FORM.damageTypeForm.labels.flag"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.flag'}}"></i>
+        </label>
+        <div class="input-group radio-buttons" style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            <div class="radio-group">
+                <input type="radio" id="damage" name="flag-type" value="damage">
+                <label for="damage">{{localize "FORM.damageTypeForm.labels.flagDamage"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="drain" name="flag-type" value="drain">
+                <label for="drain">{{localize "FORM.damageTypeForm.labels.flagDrain"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="penalty" name="flag-type" value="penalty">
+                <label for="penalty">{{localize "FORM.damageTypeForm.labels.flagPenalty"}}</label>
+            </div>
+            <select name="flag-ability" class="input">
+                <option value="">{{localize "FORM.damageTypeForm.options.selectAbility"}}</option>
+                <option value="str">{{localize "FORM.damageTypeForm.options.abilities.str"}}</option>
+                <option value="dex">{{localize "FORM.damageTypeForm.options.abilities.dex"}}</option>
+                <option value="con">{{localize "FORM.damageTypeForm.options.abilities.con"}}</option>
+                <option value="int">{{localize "FORM.damageTypeForm.options.abilities.int"}}</option>
+                <option value="wis">{{localize "FORM.damageTypeForm.options.abilities.wis"}}</option>
+                <option value="cha">{{localize "FORM.damageTypeForm.options.abilities.cha"}}</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <button type="button" name="save" class="btn btn-primary">{{localize "BUTTONS.save"}}</button>
+    </div>
+
+    <hr>
+
+    {{#if savedDamageTypes.length}}
+    <div class="form-group" style="text-align: center;">
+        <label for="savedDamageTypes" style="font-weight: bold;">{{localize "FORM.damageTypeForm.savedCustomDamageTypes"}}</label>
+    </div>
+
+    <div class="form-group">
+        <ul class="saved-damage-types-grid">
+            {{#each savedDamageTypes}}
+                <li class="saved-damage-type-item">
+                    <div class="value-details">
+                        {{#if this.value.img}}
+                            <img src="{{this.value.img}}" alt="{{this.value.name}}" class="saved-damage-type-icon with-border">
+                        {{else if this.value.icon}}
+                            <i class="{{this.value.icon}} saved-damage-type-icon with-border" {{colorStyle this.value.color}}></i>
+                        {{/if}}
+                        <strong>{{this.value.name}}</strong>
+                    </div>
+                    <div class="value-actions">
+                        <button type="button" class="btn icon-btn edit-btn" data-index="{{@index}}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn icon-btn btn-danger delete-btn" data-index="{{@index}}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </li>
+            {{/each}}
+        </ul>
+    </div>
+
+    <div class="form-group">
+        <button type="button" name="clear" class="btn btn-danger" style="display: block; margin: 0 auto;">{{localize "FORM.damageTypeForm.buttons.clear"}}</button>
+    </div>
+    {{/if}}
+</form>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!--<form>
+    <div class="form-group">
+        <label for="name">Enter Name:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Enter the name of the object"></i>
+        </label>
+        <input type="text" name="name" value="" placeholder="Enter name here..." class="input">
+    </div>
+    <div class="form-group">
+        <label for="img">Select Image:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Select an image for the object"></i>
+        </label>
+        <div class="input-group">
+            <input type="text" name="img" placeholder="Select image..." data-dtype="String" class="input">
+            <button type="button" class="file-picker" data-type="image" data-target="img">Browse</button>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="category">Enter Category:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Enter the category of the object"></i>
+        </label>
+        <input type="text" name="category" value="" placeholder="Enter category here..." class="input">
+    </div>
+    <div class="form-group">
+        <label for="abbr">Enter Abbreviation:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Enter the abbreviation for the object"></i>
+        </label>
+        <input type="text" name="abbr" value="" placeholder="Enter abbreviation here..." class="input">
+    </div>
+    <div class="form-group">
+        <label for="icon">Enter Icon Class:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Enter the icon class for the object"></i>
+        </label>
+        <input type="text" name="icon" value="" placeholder="Enter icon class here..." class="input">
+    </div>
+    <div class="form-group">
+        <label for="isModifier">Is Modifier:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Check if this is a modifier"></i>
+        </label>
+        <input type="checkbox" name="isModifier" class="checkbox">
+    </div>
+    <div class="form-group">
+        <label for="color">Select Color:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Select a color for the icon"></i>
+        </label>
+        <input type="color" name="color" value="#000000" class="color-picker">
+    </div>
+    <div class="form-group">
+        <label for="flag">Enter Flag:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="Enter a flag value for the object"></i>
+        </label>
+        <input type="text" name="flag" value="" placeholder="Enter flag here..." class="input">
+    </div>
+    <div class="form-group">
+        <button type="button" name="save" class="btn btn-primary">Save</button>
+    </div>
+
+    <hr>
+
+    <div class="form-group" style="text-align: center;">
+        <label for="savedValues" style="font-weight: bold;">Saved Values:</label>
+    </div>
+
+    <div class="form-group">
+        <ul class="saved-values-grid">
+            {{#each savedValues}}
+                <li class="saved-value-item">
+                    <div class="value-details">
+                        {{#if this.value.img}}
+                            <img src="{{this.value.img}}" alt="{{this.value.name}}" class="saved-value-icon with-border">
+                        {{else if this.value.icon}}
+                            <i class="{{this.value.icon}} saved-value-icon with-border" {{colorStyle this.value.color}}></i>
+                        {{/if}}
+                        <strong>{{this.value.name}}</strong>
+                    </div>
+                    <div class="value-actions">
+                        <button type="button" class="btn icon-btn edit-btn" data-index="{{@index}}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn icon-btn btn-danger delete-btn" data-index="{{@index}}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </li>
+            {{/each}}
+        </ul>
+    </div>
+
+    <div class="form-group">
+        <button type="button" name="clear" class="btn btn-danger" style="display: block; margin: 0 auto;">Clear All</button>
+    </div>
+</form>-->

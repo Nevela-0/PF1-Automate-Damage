@@ -1,0 +1,89 @@
+<form class="edit-damage-type">
+    <div class="form-group field-group">
+        <label>{{localize "FORM.damageTypeForm.labels.name"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.name'}}"></i>
+        </label>
+        <input type="text" name="name" value="{{item.name}}" class="input" style="margin-left: 0.3rem;">
+    </div>
+    <div class="form-group field-group">
+        <label for="img">{{localize "FORM.damageTypeForm.labels.img"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.img'}}"></i>
+        </label>
+        <div class="input-group">
+            <input type="hidden" name="img" value="{{item.img}}" data-dtype="String" class="input">
+            <button type="button" class="file-picker btn" data-type="image" style="margin-left: 8rem;" data-target="img">{{localize "BUTTONS.browse"}}</button>
+        </div>
+    </div>
+    <div class="form-group field-group">
+        <label>{{localize "FORM.damageTypeForm.labels.category"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.category'}}"></i>
+        </label>
+        <div class="input-group radio-buttons" style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            <div class="radio-group">
+                <input type="radio" id="edit-physical" name="category" value="physical" {{#if (eq item.category 'physical')}}checked{{/if}}>
+                <label for="edit-physical">{{localize "FORM.damageTypeForm.labels.categoryPhysical"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="edit-energy" name="category" value="energy" {{#if (eq item.category 'energy')}}checked{{/if}}>
+                <label for="edit-energy">{{localize "FORM.damageTypeForm.labels.categoryEnergy"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="edit-misc" name="category" value="misc" {{#if (eq item.category 'misc')}}checked{{/if}}>
+                <label for="edit-misc">{{localize "FORM.damageTypeForm.labels.categoryMisc"}}</label>
+            </div>
+            <input type="text" name="custom-category" value="{{#unless (or (eq item.category 'physical') (eq item.category 'energy') (eq item.category 'misc'))}}{{item.category}}{{/unless}}" placeholder="{{localize 'FORM.damageTypeForm.placeholders.customCategory'}}" class="input" style="width: 100%;">
+        </div>
+    </div>
+    <div class="form-group field-group">
+        <label>{{localize "FORM.damageTypeForm.labels.abbr"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.abbr'}}"></i>
+        </label>
+        <input type="text" name="abbr" value="{{item.abbr}}" placeholder="{{localize 'FORM.damageTypeForm.placeholders.abbr'}}" class="input" style="margin-left: 0.3rem;">
+    </div>
+    <div class="form-group field-group">
+        <label>{{localize "FORM.damageTypeForm.labels.icon"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.icon'}}"></i>
+        </label>
+        <div class="input-group" style="display: flex; align-items: center;">
+            <input type="text" name="icon" value="{{item.icon}}" placeholder="{{localize 'FORM.damageTypeForm.placeholders.icon'}}" class="input" style="flex: 1;">
+            <input type="color" name="color" value="{{item.color}}" class="color-picker" style="width: 25px; height: 24px;">
+        </div>
+    </div>
+    <div class="form-group field-group">
+        <label>{{localize "FORM.damageTypeForm.labels.isModifier"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.isModifier'}}"></i>
+        </label>
+        <input type="checkbox" name="isModifier" {{#if item.isModifier}}checked{{/if}} class="checkbox">
+    </div>
+    <div class="form-group field-group">
+        <label>{{localize "FORM.damageTypeForm.labels.flag"}}:
+            <i class="fas fa-info-circle tooltip-icon" data-tooltip="{{localize 'FORM.damageTypeForm.tooltips.flag'}}"></i>
+        </label>
+        <div class="input-group radio-buttons" style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            <div class="radio-group">
+                <input type="radio" id="edit-damage" name="flag-type" value="damage" {{#if (eq item.flags.[moduleId].type 'damage')}}checked{{/if}}>
+                <label for="edit-damage">{{localize "FORM.damageTypeForm.labels.flagDamage"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="edit-drain" name="flag-type" value="drain" {{#if (eq item.flags.[moduleId].type 'drain')}}checked{{/if}}>
+                <label for="edit-drain">{{localize "FORM.damageTypeForm.labels.flagDrain"}}</label>
+            </div>
+            <div class="radio-group">
+                <input type="radio" id="edit-penalty" name="flag-type" value="penalty" {{#if (eq item.flags.[moduleId].type 'penalty')}}checked{{/if}}>
+                <label for="edit-penalty">{{localize "FORM.damageTypeForm.labels.flagPenalty"}}</label>
+            </div>
+            <select name="flag-ability" class="input">
+                <option value="">{{localize "FORM.damageTypeForm.options.selectAbility"}}</option>
+                <option value="str" {{#if item.flags.[moduleId].abilities.str}}selected{{/if}}>{{localize "FORM.damageTypeForm.options.abilities.str"}}</option>
+                <option value="dex" {{#if item.flags.[moduleId].abilities.dex}}selected{{/if}}>{{localize "FORM.damageTypeForm.options.abilities.dex"}}</option>
+                <option value="con" {{#if item.flags.[moduleId].abilities.con}}selected{{/if}}>{{localize "FORM.damageTypeForm.options.abilities.con"}}</option>
+                <option value="int" {{#if item.flags.[moduleId].abilities.int}}selected{{/if}}>{{localize "FORM.damageTypeForm.options.abilities.int"}}</option>
+                <option value="wis" {{#if item.flags.[moduleId].abilities.wis}}selected{{/if}}>{{localize "FORM.damageTypeForm.options.abilities.wis"}}</option>
+                <option value="cha" {{#if item.flags.[moduleId].abilities.cha}}selected{{/if}}>{{localize "FORM.damageTypeForm.options.abilities.cha"}}</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group">
+        <button type="button" name="save" class="btn btn-primary">{{localize "BUTTONS.save"}}</button>
+    </div>
+</form>

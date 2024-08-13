@@ -1,0 +1,152 @@
+{
+    "SETTINGS": {
+        "damageTypePriority": {
+            "name": "Custom Damage Type Priority",
+            "hint": "Add custom damage types to be counted as damage reduction types. Magic is at least 1, Cold Iron and Silver types are 3, Adamantine is 4 and Alignments are 5 by default."
+        },
+        "damageTypePriorityMenu": {
+            "name": "Configure Damage Type Priority",
+            "label": "Configure",
+            "hint": "Open the configuration form to set damage type priority."
+        },
+        "customSetting": {
+            "name": "Custom Damage Types",
+            "label": "Configure Custom Damage Types",
+            "hint": "Add or edit custom damage types for the module."
+        }
+    },
+    "FORM": {
+        "damageTypeForm": {
+            "title": "Custom Damage Types",
+            "clearTitle": "Clear all?",
+            "deleteTitle": "Delete \"{value}\"?",
+            "editTitle": "Edit Damage Type",
+            "labels": {
+                "name": "Damage Type Name",
+                "img": "Image",
+                "category": "Category",
+                "abbr": "Abbreviation",
+                "icon": "Icon Class and Color",
+                "isModifier": "Is Modifier",
+                "flag": "Ability Score Damage",
+                "categoryPhysical": "Physical",
+                "categoryEnergy": "Energy",
+                "categoryMisc": "Misc",
+                "flagDamage": "Damage",
+                "flagDrain": "Drain",
+                "flagPenalty": "Penalty"
+            },
+            "placeholders": {
+                "name": "Enter the new damage type name here...",
+                "customCategory": "Enter a new category name...",
+                "abbr": "Enter abbreviation here...",
+                "icon": "Enter icon class here..."
+            },
+            "tooltips": {
+                "name": "Enter the name of the new damage type",
+                "img": "Select an image for the new damage type",
+                "category": "Select a category or enter a new category name.<br><br>The system has the 'Physical', 'Energy', and 'Miscellaneous' categories by default.",
+                "abbr": "Enter the abbreviation of the damage type",
+                "icon": "Enter the icon class and select a color for the new damage type",
+                "isModifier": "Check if this is a modifier",
+                "flag": "Select the type of ability score damage and the ability score"
+            },
+            "options": {
+                "selectAbility": "Select Ability",
+                "abilities": {
+                    "str": "Strength",
+                    "dex": "Dexterity",
+                    "con": "Constitution",
+                    "int": "Intelligence",
+                    "wis": "Wisdom",
+                    "cha": "Charisma"
+                }
+            },
+            "buttons": {
+                "save": "Save",
+                "clear": "Clear All",
+                "browse": "Browse"
+            },
+            "confirmations": {
+                "clearAll": "Are you sure you want to clear all saved values?",
+                "deleteValue": "Are you sure you want to delete \"{value}\"?",
+                "reload": "Some of the changed settings will only take effect after the application is reloaded. Do you want to reload now?"
+            },
+            "errors": {
+                "nameRequired": "Damage type name is required.",
+                "imgOrIconRequired": "Either an image or an icon class is required.",
+                "categoryRequired": "Category is required.",
+                "invalidImgUrl": "Invalid image URL.",
+                "invalidIconClass": "Invalid icon class.",
+                "selectAbility": "You must select an ability score when specifying a damage type.",
+                "flagTypeRequired": "Ability damage type must be selected when assigning an ability score."
+            },
+            "savedCustomDamageTypes": "Custom Damage Types"
+        },
+        "damagePriorityForm": {
+            "title": "Damage Priority Settings",
+            "description": "Add custom damage types to be counted as damage reduction types. Magic is at least 1, Cold Iron and Silver types are 3, Adamantine is 4 and Alignments are 5 by default.",
+            "labels": {
+                "drType": "Damage Reduction Type",
+                "enhancement": "Enhancement"
+            },
+            "tooltips": {
+                "enhancement": "Weapon Enhancement Bonus Equivalent"
+            },
+            "buttons": {
+                "addRow": "Add Row",
+                "resetDefaults": "Reset to Defaults",
+                "save": "Save"
+            }
+        },
+        "drTypeEditor": {
+            "title": "Edit Damage Reduction Types",
+            "labels": {
+                "drTypes": "DR Types"
+            },
+            "options": {
+                "selectType": "Select Type"
+            },
+            "placeholders": {
+                "customType": "Enter custom type"
+            },
+            "buttons": {
+                "addType": "Add Type",
+                "save": "Save"
+            }
+        },
+        "translationForm": {
+            "title": "Translation Config",
+            "englishName": "English Name",
+            "translation": "Translation",
+            "description": "Change the words for 'Hardness', 'Construct Traits', and 'Undead Traits' to their translations in your desired language."
+        }
+    },
+    "NOTIFICATIONS": {
+        "confirmations": {
+            "clearAll": "Are you sure you want to clear all damage types?",
+            "deleteRow": "Are you sure you want to delete this row?",
+            "deleteTitle": "Delete row?",
+            "deleteValue": "Are you sure you want to delete \"{value}\"?",
+            "reload": "Some of the changed settings will only take effect after the application is reloaded. Do you want to reload now?",
+            "reloadRequired": "Reload Application?",
+            "resetDefaults": "Are you sure you want to reset to default values?",
+            "resetTitle": "Reset to Defaults?"
+        },
+        "errors": {
+            "nameRequired": "Damage type name is required.",
+            "imgOrIconRequired": "Either an image or an icon class is required.",
+            "categoryRequired": "Category is required.",
+            "invalidImgUrl": "Invalid image URL.",
+            "invalidIconClass": "Invalid icon class.",
+            "badWeaponTypeFormat": "Invalid format for weapon types."
+        }
+    },
+    "BUTTONS": {
+        "yes": "Yes",
+        "no": "No",
+        "save": "Save",
+        "cancel": "Cancel",
+        "browse": "Browse"
+    }
+}

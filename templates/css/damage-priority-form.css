@@ -1,0 +1,56 @@
+.input-group {
+    display: flex;
+    align-items: center;
+}
+
+button.edit-row {
+    background: none;
+    border: none;
+    margin-left: 5px;
+    padding: 0;
+    cursor: pointer;
+    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+button.edit-row i {
+    font-size: 1em;
+}
+
+.damage-priority-table td:nth-child(2) {
+    display: right;
+    text-align: center; /* Center-align the content in the second column */
+}
+
+/* Adjust column widths */
+.damage-priority-table th:nth-child(1), 
+.damage-priority-table td:nth-child(1) {
+    width: 75%; /* DR Type column width */
+}
+
+.damage-priority-table th:nth-child(2), 
+.damage-priority-table td:nth-child(2) {
+    width: 25%; /* Weapon Enhancement Bonus Equivalent column width */
+}
+
+button.delete-row {
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: auto;
+    position: absolute; /* Absolute positioning */
+    right: 0; /* Align to the right edge */
+    width: 24px; /* Set width to match icon size */
+    height: 24px; /* Set height to match icon size */
+}
+
+button.delete-row i {
+    font-size: 1em;
+    width: 100%; /* Ensure icon takes up the full width of the button */
+    height: 100%; /* Ensure icon takes up the full height of the button */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

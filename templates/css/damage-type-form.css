@@ -1,0 +1,169 @@
+.damage-type-form .form-group,
+.edit-damage-type .form-group {
+    position: relative; /* Needed for tooltip positioning */
+}
+
+.damage-type-form .form-group.field-group,
+.edit-damage-type .form-group.field-group {
+    border: 1px solid #0a0a0a; /* Add a border */
+    border-radius: 5px; /* Optional: Add rounded corners */
+    padding: 0.1rem; /* Add padding for better spacing */
+}
+
+.damage-type-form .input-group,
+.edit-damage-type .input-group {
+    display: flex;
+    align-items: center;
+}
+
+.damage-type-form .input,
+.edit-damage-type .input,
+.damage-type-form .checkbox,
+.edit-damage-type .checkbox,
+.damage-type-form .color-picker,
+.edit-damage-type .color-picker {
+    width: 100%;
+    margin-top: 0.25rem;
+}
+
+.damage-type-form .color-picker,
+.edit-damage-type .color-picker {
+    border: 1px solid #0a0a0a; /* Black border */
+    border-radius: 5px; /* Rounded corners if desired */
+    margin-left: 0.1rem;
+    padding: 0;
+}
+
+.damage-type-form .color-picker::-webkit-color-swatch-wrapper,
+.edit-damage-type .color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.damage-type-form .color-picker::-webkit-color-swatch,
+.edit-damage-type .color-picker::-webkit-color-swatch {
+    border: none;
+}
+
+.damage-type-form .btn,
+.edit-damage-type .btn {
+    margin-top: 0.5rem;
+}
+
+.damage-type-form .saved-damage-types-grid,
+.edit-damage-type .saved-damage-types-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Changed to 3 columns */
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+}
+
+.damage-type-form .saved-damage-type-item,
+.edit-damage-type .saved-damage-type-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between; /* Ensure content is spaced evenly */
+    padding: 0.5rem;
+    border: 1px solid #000000; /* Changed border color to black */
+    height: 200px; /* Set a fixed height for a perfect square */
+}
+
+.damage-type-form .value-details,
+.edit-damage-type .value-details {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.damage-type-form .value-actions,
+.edit-damage-type .value-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    justify-content: center; /* Center the buttons */
+}
+
+.damage-type-form .saved-damage-type-icon,
+.edit-damage-type .saved-damage-type-icon {
+    width: 96px; /* Make the icon larger */
+    height: 96px;
+    margin-bottom: 0.5rem; /* Add margin to separate image from text */
+    border-radius: 5px; /* Add border radius */
+}
+
+.damage-type-form .with-border,
+.edit-damage-type .with-border {
+    border-radius: 5px; /* Add border radius */
+}
+
+.damage-type-form .icon-btn,
+.edit-damage-type .icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.damage-type-form .icon-btn i,
+.edit-damage-type .icon-btn i {
+    font-size: 1.5rem;
+}
+
+.damage-type-form .saved-damage-type-icon.with-border,
+.edit-damage-type .saved-damage-type-icon.with-border {
+    font-size: 4.5rem; /* Adjust font size for icons to match image size */
+    width: 96px; /* Ensure width matches */
+    height: 96px; /* Ensure height matches */
+    line-height: 96px; /* Center icon vertically */
+    text-align: center; /* Center icon horizontally */
+}
+
+/* Ensure this applies only to the input group containing radio buttons */
+.damage-type-form .input-group.radio-buttons {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+}
+
+.damage-type-form .input-group.radio-buttons input[type="radio"],
+.edit-damage-type .input-group.radio-buttons input[type="radio"] {
+    display: none;
+}
+
+.damage-type-form .input-group.radio-buttons label,
+.edit-damage-type .input-group.radio-buttons label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    cursor: pointer;
+    border: 1px solid #0a0a0a;
+    border-radius: 5px;
+    text-align: center;
+    width: 80px;
+    height: 25px;
+}
+
+.damage-type-form .input-group.radio-buttons input[type="radio"]:checked + label,
+.edit-damage-type .input-group.radio-buttons input[type="radio"]:checked + label {
+    box-shadow: 0 0 10px red;
+    border-color: red;
+}
+
+.damage-type-form .saved-damage-type-item .btn.icon-btn i,
+.edit-damage-type .saved-damage-type-item .btn.icon-btn i {
+    margin: 0;
+    font-size: 30px;
+}
+
+.file-picker.btn {
+    margin-top: 0rem; /* Adjust the value as needed to raise the button */
+    margin-left: 14rem; /* Preserve the existing margin-left value */
+}

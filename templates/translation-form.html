@@ -1,0 +1,29 @@
+<form>
+    <p style="text-align:center">{{localize "FORM.translationForm.description"}}</p>
+    
+    <header class="table-header flexrow">
+        <label>{{localize "FORM.translationForm.englishName"}}</label>
+        <label>{{localize "FORM.translationForm.translation"}}</label>
+    </header>
+
+    <ul class="action-list">
+        <li class="action form-group">
+            <div>Hardness</div>
+            <input name="hardness" type="text" value="{{hardness}}"/>
+        </li>
+        <li class="action form-group">
+            <div>Construct Traits</div>
+            <input name="construct" type="text" value="{{construct}}"/>
+        </li>
+        <li class="action form-group">
+            <div>Undead Traits</div>
+            <input name="undead" type="text" value="{{undead}}"/>
+        </li>
+    </ul>
+
+    <div class="form-group">
+        <button type="submit">
+            <i class="fas fa-save"></i> {{localize 'BUTTONS.save'}}
+        </button>
+    </div>
+</form>

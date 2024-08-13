@@ -1,22 +1,40 @@
-//import { DamageTypeSelector } from './damage-type-selector.js';
-import {automateDamageConfig, registerSettings} from './config.js';
+import { automateDamageConfig, registerSettings, MODULE, syncWeaponDamageTypes } from './config.js';
 import { onRenderChatMessage } from './buttons.js';
-
-// Create a configuration window for the module to allow users to insert their own custom damage types
-// When adding a new damage type have a boolean for energy damage types. "Nonmagical" and "Magical".
-// Add hardness to the DR logic
-// Find out if it's viable to apply ability damage (line "const abilities = token.actor.system.abilities")
-// If applying ability damage is viable, create new damage types for the system for each ability
-// Some creature traits could be handled (critical immune creatures can ignore the extra damage if the attack was a critical)
 
 Hooks.on("renderChatMessage", (app, html, data) => {onRenderChatMessage(html)});
 Hooks.once("ready", () => {
     overrideApplyDamage();
-    //new DamageTypeSelector().render(true);
+    const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
+
+    customDamageTypes.forEach(damageType => {
+        const { value } = damageType;
+        if (!["physical", "energy", "misc"].includes(value.category.toLowerCase())) {
+            const localizationKey = `PF1.DamageTypeCategory.${value.category.toLowerCase()}`;
+            if (!game.i18n.translations.PF1.DamageTypeCategory) {
+                game.i18n.translations.PF1.DamageTypeCategory = {};
+            };
+            game.i18n.translations.PF1.DamageTypeCategory[value.category.toLowerCase()] = value.category.capitalize();
+        };
+    });
+});
+Hooks.once("init", function() {
+    registerSettings();
+    Hooks.on('pf1RegisterDamageTypes', (registry) => {
+        const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
+
+        customDamageTypes.forEach(damageType => {
+            const { key, value } = damageType;
+            if (!["physical", "energy", "misc"].includes(value.category.toLowerCase())) {
+                registry.constructor.CATEGORIES.push(value.category);
+            };
+            registry.register(MODULE.ID, key, value);
+        });
+    });
+    Hooks.callAll("pf1RegisterDamageTypes", pf1.registry.damageTypes);
 });
 Hooks.once("setup", function() {
-    registerSettings();
-});
+    syncWeaponDamageTypes()
+})
 
 function overrideApplyDamage () {
     libWrapper.register('pf1-automate-damage', 'pf1.documents.item.ItemPF._onChatCardAction', interceptCardData, libWrapper.MIXED);
@@ -67,12 +85,14 @@ function customApplyDamage(originalApplyDamage, value, config) {
     canvas.tokens.controlled.forEach(token => {
         let totalDamage = 0;
         const traits = token.actor.system.traits;
-        const eRes = traits.eres; // Energy resistances
+        const abilities = token.actor.system.abilities; // Used to apply ability damage \ drain \ penalty
+        const eRes = traits.eres; // Energy Resistances
+        const conditionImmunities = traits.ci; // Condition Immunities
         const damageImmunities = traits.di; // Damage Immunities
         const damageReductions = traits.dr; // Damage Reductions
         const damageVulnerabilities = traits.dv; // Damage Vulnerabilities
         const messageId = targetInfo.id;
-        const message = game.messages.get(messageId)
+        const message = game.messages.get(messageId);
         let systemRolls = game.messages.get(messageId).systemRolls;
         if(Object.keys(systemRolls).length == 0 && systemRolls.constructor == Object && game.messages.get(messageId).rolls) {
             systemRolls = game.messages.get(messageId).rolls;
@@ -84,14 +104,15 @@ function customApplyDamage(originalApplyDamage, value, config) {
             const attack = systemRolls.attacks[targetInfo.attackIndex];
             if (attack.damage?.length > 0) {
                 const attackDamage = targetInfo.isCriticalButton ? JSON.parse(JSON.stringify([...attack.damage, ...attack.critDamage])) : JSON.parse(JSON.stringify(attack.damage));
-                const {damageSortObjects, damageTypes, itemAction} = sortDamage(attackDamage, itemSource, message);
+                const {damageSortObjects, damageTypes, itemAction, abilityDmg} = sortDamage(attackDamage, itemSource, message);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
                 damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message);
+                abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg);
                 attackDamage.forEach(damage => {
                     const damageTypes = damage.options?.damageType?.values || [];
-                    const customDamageTypeValue = damage.options?.damagetype?.custom?.trim() || "";
+                    const customDamageTypeValue = damage.options?.damageType?.custom?.trim() || "";
                     if(customDamageTypeValue.length>0) {
                         damageTypes.push(customDamageTypeValue);
                     };
@@ -99,15 +120,25 @@ function customApplyDamage(originalApplyDamage, value, config) {
                         damageTypes[0] = "untyped";
                     };
                     const type = damageTypes[0];
-                    let damageForType = Math.floor(damage.total * damageMult) || 0; // Default to 0 if total damage is not defined
-
-                    totalDamage += Math.max(0, damageForType);
+                    if (type !== abilityDmg[0]?.type || abilityDmg.length == 0) { // Apply damage if the type is not an ability damage type
+                        let damageForType = Math.floor(damage.total * damageMult) || 0; // Default to 0 if total damage is not defined
+    
+                        totalDamage += Math.max(0, damageForType);
+                    } else if (abilityDmg && abilityDmg.length > 0) {
+                        let updates = {};
+                        for (const key in abilities) {
+                            updates[`system.abilities.${key}.damage`] = abilities[key].damage;
+                            updates[`system.abilities.${key}.drain`] = abilities[key].drain;
+                            updates[`system.abilities.${key}.userPenalty`] = abilities[key].userPenalty;
+                        };
+                        token.actor.update(updates);
+                    };
                 });
             };
         } else {
             systemRolls.forEach(roll => {
                 const attackDamage = JSON.parse(JSON.stringify(roll?.terms));
-                const {damageSortObjects, damageTypes} = sortDamage(attackDamage, messageId);
+                const {damageSortObjects, damageTypes} = sortDamage(attackDamage, messageId, message);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
@@ -126,22 +157,40 @@ function customApplyDamage(originalApplyDamage, value, config) {
 };
 
 function sortDamage(attackDamage, itemSource, message) {
-    // Handle Actual Reduction from incoming damage
     const damageSortObjects = [];
     const dataActionId = message.flags?.pf1?.metadata?.action;
     const itemAction = [];
+    const abilityDmg = [];
     
     const damageTypes = attackDamage.map((damage, index) => {
         if(damage.options.damageType) {
-            const dmgNames = damage.options.damageType.values;
+            const dmgNames = [];
+            const dmgTypes = damage.options.damageType.values;
+            for (const [key, value] of pf1.registry.damageTypes.entries()) {
+                for (const type of dmgTypes) {
+                    if (type === key) {
+                        const flags = value.flags?.['pf1-automate-damage'];
+                        if (!flags) {
+                            dmgNames.push(type);
+                        } else {
+                            if (flags?.vsAbility) {
+                                const vsAbility = flags?.abilities;
+                                const ablType = flags?.type;
+                                abilityDmg.push({ type: type, amount: damage.total, vs: vsAbility, ablDmgType: ablType });
+                            } else {
+                                dmgNames.push(type);
+                            };
+                        };
+                    };
+                };
+            };
             let customNames = damage.options.damageType.custom.trim(); // Make sure to declare customNames with let to reassign it later
             if (customNames.length > 0) {
                 customNames = customNames.split(',').map(name => name.trim()); // Split by comma and trim whitespace
                 dmgNames.push(...customNames); // Add custom names to dmgNames array
-            }
+            };
             const alignments = itemSource?.system?.alignments;
             const materials = itemSource?.system?.material;
-            // Check if the actions of the item have override value settings
             if (itemSource.actions.size >= 1) {
                 const actionIds = [];
                 const itemActions = [];
@@ -175,16 +224,12 @@ function sortDamage(attackDamage, itemSource, message) {
                     if (overrideAlignments && Object.values(overrideAlignments).some(value => value !== null)) {
                         for (const [alignment, value] of Object.entries(overrideAlignments)) {
                             if (value === true && alignments[alignment] === false) {
-                                // From false to true, add to dmgNames
                                 dmgNames.push(alignment);
                             } else if (value === null && alignments[alignment] === true) {
-                                // Original true and override is null, add to dmgNames
                                 dmgNames.push(alignment);
                             };
                         };
                     };
-                
-                    // Add remaining true alignments from the original alignments if not overridden by false
                     for (const [alignment, value] of Object.entries(alignments || {})) {
                         if (value === true && !(overrideAlignments && overrideAlignments[alignment] === false)) {
                             if (!dmgNames.includes(alignment)) {
@@ -198,7 +243,7 @@ function sortDamage(attackDamage, itemSource, message) {
                             dmgNames.push(...customMaterials);
                         } else {
                             dmgNames.push(overrideMaterials);
-                        }
+                        };
                     } else {
                         if (materials?.normal?.value) {
                             if (!materials.normal.custom) {
@@ -207,15 +252,15 @@ function sortDamage(attackDamage, itemSource, message) {
                             } else {
                                 const customMaterials = materials.normal.value.split(',').map(name => name.trim().toLowerCase());
                                 dmgNames.push(...customMaterials);
-                            }
-                        }
+                            };
+                        };
                     };
     
                     if (materials?.addon?.length > 0) {
                         materials.addon.forEach(addon => {
                             if (!dmgNames.includes(addon)) {
                                 dmgNames.push(addon);
-                            }
+                            };
                         });
                     };
                     
@@ -232,10 +277,12 @@ function sortDamage(attackDamage, itemSource, message) {
             dmgNames.forEach((name, i) => {
                 dmgNames[i] = name.trim().toLowerCase();
             });
-            damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
+            if (dmgNames.length > 0) {
+                damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
+            }
             return dmgNames;
         } else {
-            if (!damage.options?.flavor){
+            if (!damage.options?.flavor) {
                 const dmgNames = ["untyped"]
                 const damageAmount = damage.number;
                 dmgNames.forEach((name, i) => {
@@ -251,18 +298,17 @@ function sortDamage(attackDamage, itemSource, message) {
                 });
                 damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
                 return dmgNames;
-            }
-        }
+            };
+        };
     }).flat();
     damageSortObjects.sort((a, b) => b.amount - a.amount);
 
-    return { damageSortObjects, damageTypes, itemAction };
+    return { damageSortObjects, damageTypes, itemAction, abilityDmg };
 }
 
 
 
 function damageReductionCalculation (attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message) {
-    //Get Character Damage reduction
     const drCustom = damageReductions.custom.split(';');
     const totalDR = [];
     if(drCustom.length > 0 && drCustom[0].length > 0) {
@@ -306,7 +352,6 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             let ammoElement = doc.querySelector('[data-ammo-id]');
             let ammoId = ammoElement ? ammoElement.getAttribute('data-ammo-id') : null;
             const ammoItem = itemSource.parent.items.get(ammoId);
-            // game.modules.get('ckl-roll-bonuses').api.utils.getEnhancementBonusForAction({ ammo, action }) <= Use this instead
             let ckl = ammoItem?.['ckl-roll-bonuses'] ?? {};
             if (ckl.hasOwnProperty('ammo-enhancement') || ckl.hasOwnProperty('ammo-enhancement-stacks')) {
                 const enh = +ckl['ammo-enhancement'] || 0;
@@ -360,7 +405,46 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
     };
     totalDR.forEach(dr => {
         const allWeaponDamageTypes = [...automateDamageConfig.weaponDamageTypes,...automateDamageConfig.additionalPhysicalDamageTypes].flat(2);
-        // operator true = "or"; operator false = "and"
+        const isHardness = dr.types.some(type => {
+            return type === game.settings.get(MODULE.ID, "translations")?.hardness?.toLowerCase();
+        });
+
+        if (isHardness) {
+            const materials = itemSource?.system?.material;
+            let isAdamantine = false;
+            let hardnessToIgnore = 0;
+            const booleanFlags = itemSource?.system?.flags?.boolean || {};
+            const dictionaryFlags = itemSource?.system?.flags?.dictionary || {};
+            for (let key in booleanFlags) {
+                if (key.toLowerCase() === "ignorehardness" && booleanFlags[key]) {
+                    hardnessToIgnore = dr.amount; // Ignore all hardness
+                    break;
+                }
+            }
+            for (let key in dictionaryFlags) {
+                if (key.toLowerCase() === "ignorehardness") {
+                    const value = parseInt(dictionaryFlags[key], 10);
+                    if (!isNaN(value)) {
+                        hardnessToIgnore = Math.max(hardnessToIgnore, value); // Use the maximum value if multiple exist
+                    }
+                }
+            }
+            if (hardnessToIgnore >= dr.amount) {
+                return; // Skip applying hardness reduction
+            } else if (hardnessToIgnore > 0) {
+                dr.amount -= hardnessToIgnore; // Reduce the hardness by the ignored amount
+            }
+            if (materials) {
+                if (materials.normal?.value?.toLowerCase() === 'adamantine' ||
+                    materials.addon?.includes('adamantine')) {
+                    isAdamantine = true;
+                }
+            }
+
+            if (isAdamantine && dr.amount <= 20) {
+                return; // Skip applying hardness reduction
+            }
+        }
         if(dr.operator == false) {
             for(let i = 0; i < dr.types.length ;i++) {
                 const drType = dr.types[i];
@@ -418,6 +502,16 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                 };
             };
         };
+        if (isHardness) {
+            for (let i = 0; i < damageSortObjects.length; i++) {
+                const currentDamageSortObject = damageSortObjects[i];
+                if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
+                    attackDamage[currentDamageSortObject.index].total = Math.max(0, attackDamage[currentDamageSortObject.index].total - dr.amount);
+                } else { // If made through chat or macro
+                    attackDamage[currentDamageSortObject.index].number = Math.max(0, attackDamage[currentDamageSortObject.index].number - dr.amount);
+                }
+            }
+        }
     });
 };
 
@@ -540,3 +634,149 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
         };
     });
 };
+
+function abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg) {
+    const translations = game.settings.get(MODULE.ID, "translations") || {};
+    const constructTranslation = translations.construct || "Construct Traits";
+    const undeadTranslation = translations.undead || "Undead Traits";
+    const abilityFullNames = {
+        str: translations.str || "Strength",
+        dex: translations.dex || "Dexterity",
+        con: translations.con || "Constitution",
+        int: translations.int || "Intelligence",
+        wis: translations.wis || "Wisdom",
+        cha: translations.cha || "Charisma"
+    };
+    const reverseAbilityMap = Object.entries(abilityFullNames).reduce((acc, [key, fullName]) => {
+        acc[key] = key;
+        acc[fullName.toLowerCase()] = key;
+        return acc;
+    }, {});
+    const abilityPatterns = Object.entries(abilityFullNames).map(
+        ([key, fullName]) => `${key}|${fullName}`
+    ).join("|");
+    const patterns = {
+        allAbilities: /^All Ability Damage$/i,
+        allDamage: /^Ability Damage$/i,
+        allDrain: /^Ability Drain$/i,
+        allPenalty: /^Ability Penalty$/i,
+        keyDamage: new RegExp(`^(${abilityPatterns}) Damage$`, "i"),
+        keyDrain: new RegExp(`^(${abilityPatterns}) Drain$`, "i"),
+        keyPenalty: new RegExp(`^(${abilityPatterns}) Penalty$`, "i"),
+        allKey: new RegExp(`^All (${abilityPatterns}) Damage$`, "i"),
+        mentalDamage: /^Mental Ability Damage$/i,
+        mentalDrain: /^Mental Ability Drain$/i,
+        mentalPenalty: /^Mental Ability Penalty$/i,
+        allMental: /^All Mental Abilities$/i,
+        physicalDamage: /^Physical Ability Damage$/i,
+        physicalDrain: /^Physical Ability Drain$/i,
+        physicalPenalty: /^Physical Ability Penalty$/i,
+        allPhysical: /^All Physical Abilities$/i
+    };
+    for (const dmg of abilityDmg) {
+        const { vs, amount, ablDmgType, type } = dmg;
+        for (const abilityKey in vs) {
+            if (amount <= 0) continue; // Skip if there's no damage amount
+
+            let isImmune = false;
+            if (damageImmunities.value.find(v => v.toLowerCase() === type.toLowerCase())) {
+                isImmune = true;
+                break;
+            }
+            if (conditionImmunities.custom.some(trait => trait.toLowerCase() === constructTranslation.toLowerCase())) {
+                dmg.amount = 0;
+                continue;
+            } else if (conditionImmunities.custom.some(trait => trait.toLowerCase() === undeadTranslation.toLowerCase())) {
+                if (ablDmgType === "damage" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
+                    dmg.amount = 0;
+                } else if (ablDmgType === "drain" || ablDmgType === "penalty") {
+                    dmg.amount = 0;
+                }
+                continue;
+            }
+            for (const immunity of damageImmunities.custom) {
+                const matchedKey = immunity.match(patterns.keyDamage) || immunity.match(patterns.keyDrain) || immunity.match(patterns.keyPenalty);
+                const immunityKey = matchedKey && reverseAbilityMap[matchedKey[1].toLowerCase()];
+
+                if (patterns.allAbilities.test(immunity)) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.allDamage.test(immunity) && ablDmgType === "damage") {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.allDrain.test(immunity) && ablDmgType === "drain") {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.allPenalty.test(immunity) && ablDmgType === "penalty") {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.keyDamage.test(immunity) && ablDmgType === "damage" && immunityKey === abilityKey) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.keyDrain.test(immunity) && ablDmgType === "drain" && immunityKey === abilityKey) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.keyPenalty.test(immunity) && ablDmgType === "penalty" && immunityKey === abilityKey) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.allKey.test(immunity) && immunityKey === abilityKey) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.mentalDamage.test(immunity) && ablDmgType === "damage" && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.mentalDrain.test(immunity) && ablDmgType === "drain" && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.mentalPenalty.test(immunity) && ablDmgType === "penalty" && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.allMental.test(immunity) && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.physicalDamage.test(immunity) && ablDmgType === "damage" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.physicalDrain.test(immunity) && ablDmgType === "drain" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.physicalPenalty.test(immunity) && ablDmgType === "penalty" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                } else if (patterns.allPhysical.test(immunity) && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
+                    dmg.amount = 0;
+                    isImmune = true;
+                    break;
+                }
+            }
+            if (!isImmune && abilities.hasOwnProperty(abilityKey) && dmg.amount > 0) {
+                switch (ablDmgType) {
+                    case "damage":
+                        abilities[abilityKey].damage += dmg.amount;
+                        break;
+                    case "drain":
+                        abilities[abilityKey].drain += dmg.amount;
+                        break;
+                    case "penalty":
+                        abilities[abilityKey].userPenalty += dmg.amount;
+                        break;
+                }
+            }
+        }
+    }
+}
