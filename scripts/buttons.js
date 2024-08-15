@@ -3,18 +3,30 @@ export function onRenderChatMessage(html) {
     if (!messages?.length) return;
     messages.forEach(message => {
         const sections = message.querySelectorAll('tr.damage > th, th.attack-damage');
-        const damageTypes = message.querySelectorAll('td.damage-types .damage-type .name');
-        const damageRolls = message.querySelectorAll('td.roll.damage.normal a[data-tooltip]');
-
-        const damageInfo = [];
-
+        
+        const damageTypes = message.querySelectorAll('td.damage-types .damage-type .name, td.roll.damage.critical + td.damage-type .name');
+        const damageRolls = message.querySelectorAll('td.roll.damage.normal a[data-tooltip], td.roll.damage.critical a[data-tooltip]');
+    
+        const normalDamageInfo = [];
+        const criticalDamageInfo = [];
+    
         damageTypes.forEach((damageTypeElement, index) => {
             const damageRollElement = damageRolls[index];
             const damageType = damageTypeElement?.textContent.trim();
             const totalDamage = parseInt(damageRollElement?.textContent.trim(), 10);
             const damageData = { damageType, totalDamage };
-            damageInfo.push(damageData);
+    
+            // Check if the damageTypeElement is from normal or critical damage
+            const parentTd = damageTypeElement.closest('td');
+            if (parentTd.classList.contains('damage-types')) {
+                // Normal Damage
+                normalDamageInfo.push(damageData);
+            } else {
+                // Critical Damage
+                criticalDamageInfo.push(damageData);
+            }
         });
+    
         sections.forEach((section, index) => {
             const heal = document.createElement('div');
             heal.innerHTML = "❤️";
@@ -26,23 +38,38 @@ export function onRenderChatMessage(html) {
             modifyElementAttributes(healHalf, "Heal Half");
             section.appendChild(heal);
             section.appendChild(healHalf);
-
+    
             message.addEventListener('mouseenter', () => {
                 heal.style.visibility = "visible";
                 healHalf.style.visibility = "visible";
             });
-
+    
             message.addEventListener('mouseleave', () => {
                 heal.style.visibility = "hidden";
                 healHalf.style.visibility = "hidden";
             });
-
+    
+            // Check if the button corresponds to a critical hit or normal hit
+            const isCritical = section.getAttribute('data-damage-type') === 'critical';
+    
             heal.addEventListener('click', () => {
-                applyHealing(damageInfo, 1);
+                // If it's a critical button, add both normal and critical damage
+                if (isCritical) {
+                    applyHealing([...normalDamageInfo, ...criticalDamageInfo], 1);
+                } else {
+                    // If it's a normal button, only use normal damage
+                    applyHealing(normalDamageInfo, 1);
+                }
             });
-
+    
             healHalf.addEventListener('click', () => {
-                applyHealing(damageInfo, 0.5);
+                // If it's a critical button, add both normal and critical damage
+                if (isCritical) {
+                    applyHealing([...normalDamageInfo, ...criticalDamageInfo], 0.5);
+                } else {
+                    // If it's a normal button, only use normal damage
+                    applyHealing(normalDamageInfo, 0.5);
+                }
             });
         });
     });
@@ -68,8 +95,11 @@ function applyHealing(damageInfo, multiplier) {
                             amount: healAmount,
                             ablDmgType: ablDmgType
                         };
+                        
+                        // Iterate over all keys in the vs object
                         for (const abilityKey in dmg.vs) {
                             if (tokenAbilities.hasOwnProperty(abilityKey) && dmg.amount < 0) {
+                                // Apply the healing based on the ablDmgType, ensuring it doesn't go below 0
                                 switch (dmg.ablDmgType) {
                                     case "damage":
                                         tokenAbilities[abilityKey].damage = Math.max(tokenAbilities[abilityKey].damage + dmg.amount, 0);
@@ -94,11 +124,14 @@ function applyHealing(damageInfo, multiplier) {
                         token.actor.update(updates);
                     });
                 } else {
+                    // Treat as normal damage to be healed
                     healDamage += totalDamage;
                 }
             }
         }
     });
+
+    // Apply the accumulated healing as normal damage healing
     if (healDamage > 0) {
         healDamage = healDamage * -1 * multiplier;
         if (multiplier === 0.5) {

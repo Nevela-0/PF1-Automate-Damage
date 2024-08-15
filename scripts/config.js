@@ -871,18 +871,11 @@ class TranslationForm extends FormApplication {
 
     getData() {
         const translations = game.settings.get(MODULE.ID, "translations") || {};
-        const hardness = translations.hardness || "Hardness";
-        const construct = translations.construct || "Construct Traits";
-        const undead = translations.undead || "Undead Traits";
-        if (!translations.hardness) translations.hardness = "Hardness";
-        if (!translations.construct) translations.construct = "Construct Traits";
-        if (!translations.undead) translations.undead = "Undead Traits";
+        translations.hardness ||= "Hardness";
+        translations.construct ||= "Construct Traits";
+        translations.undead ||= "Undead Traits";
 
-        return {
-            hardness: hardness,
-            construct: construct,
-            undead: undead
-        };
+        return translations;
     }
 
     async _updateObject(event, formData) {

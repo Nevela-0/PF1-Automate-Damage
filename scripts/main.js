@@ -369,9 +369,9 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                 };
             };
         } else { 
-            if (addons.includes("magic")) {
+            if (addons?.includes("magic")) {
                 enhBonus = 1;
-            } else if (addons.includes("epic") && actionEnhBonus >= 6) {
+            } else if (addons?.includes("epic") && actionEnhBonus >= 6) {
                 enhBonus = Math.max(6, actionEnhBonus);
             } else {
                 enhBonus = actionEnhBonus || 0;
@@ -398,6 +398,11 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
     let highestDR = 0
     for(let i=0;i<totalDR.length;i++) {
         totalDR.forEach(dr => {
+            if (dr.types.length === 2 && dr.types[0] === "" && dr.types[1] === "") {
+                dr.types = ["-"]; // Change to DR/-
+            } else {
+                dr.types = dr.types.filter(type => type !== "");
+            }
             if(dr.amount > highestDR) {
                 highestDR = dr.amount;
             };
@@ -636,6 +641,7 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
 };
 
 function abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg) {
+    if (!abilityDmg || abilityDmg.length === 0) return;
     const translations = game.settings.get(MODULE.ID, "translations") || {};
     const constructTranslation = translations.construct || "Construct Traits";
     const undeadTranslation = translations.undead || "Undead Traits";
