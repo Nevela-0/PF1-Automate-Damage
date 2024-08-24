@@ -94,7 +94,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
                         damageTypes[0] = "untyped";
                     };
                     const type = damageTypes[0];
-                    if (type !== abilityDmg[0]?.type || abilityDmg.length == 0) { // Apply damage if the type is not an ability damage type
+                    if (!abilityDmg.some(dmgType => dmgType.type === type) || abilityDmg.length == 0) { // Apply damage if the type is not an ability damage type
                         let damageForType = Math.floor(damage.total * damageMult) || 0; // Default to 0 if total damage is not defined
     
                         totalDamage += Math.max(0, damageForType);
