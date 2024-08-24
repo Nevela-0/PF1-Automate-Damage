@@ -1,40 +1,13 @@
-import { automateDamageConfig, registerSettings, MODULE, syncWeaponDamageTypes } from './config.js';
+import { AutomateDamageModule } from './config.js';
 import { onRenderChatMessage } from './buttons.js';
 
 Hooks.on("renderChatMessage", (app, html, data) => {onRenderChatMessage(html)});
+Hooks.once("init", AutomateDamageModule.handleInitHook);
+Hooks.once("setup", AutomateDamageModule.handleSetupHook);
 Hooks.once("ready", () => {
+    AutomateDamageModule.handleReadyHook();
     overrideApplyDamage();
-    const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
-
-    customDamageTypes.forEach(damageType => {
-        const { value } = damageType;
-        if (!["physical", "energy", "misc"].includes(value.category.toLowerCase())) {
-            const localizationKey = `PF1.DamageTypeCategory.${value.category.toLowerCase()}`;
-            if (!game.i18n.translations.PF1.DamageTypeCategory) {
-                game.i18n.translations.PF1.DamageTypeCategory = {};
-            };
-            game.i18n.translations.PF1.DamageTypeCategory[value.category.toLowerCase()] = value.category.capitalize();
-        };
-    });
 });
-Hooks.once("init", function() {
-    registerSettings();
-    Hooks.on('pf1RegisterDamageTypes', (registry) => {
-        const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
-
-        customDamageTypes.forEach(damageType => {
-            const { key, value } = damageType;
-            if (!["physical", "energy", "misc"].includes(value.category.toLowerCase())) {
-                registry.constructor.CATEGORIES.push(value.category);
-            };
-            registry.register(MODULE.ID, key, value);
-        });
-    });
-    Hooks.callAll("pf1RegisterDamageTypes", pf1.registry.damageTypes);
-});
-Hooks.once("setup", function() {
-    syncWeaponDamageTypes()
-})
 
 function overrideApplyDamage () {
     libWrapper.register('pf1-automate-damage', 'pf1.documents.item.ItemPF._onChatCardAction', interceptCardData, libWrapper.MIXED);
@@ -85,14 +58,15 @@ function customApplyDamage(originalApplyDamage, value, config) {
     canvas.tokens.controlled.forEach(token => {
         let totalDamage = 0;
         const traits = token.actor.system.traits;
-        const abilities = token.actor.system.abilities; // Used to apply ability damage \ drain \ penalty
+        const abilities = token.actor.system.abilities // Used to apply ability damage \ drain \ penalty
         const eRes = traits.eres; // Energy Resistances
-        const conditionImmunities = traits.ci; // Condition Immunities
+        const conditionImmunities = traits.ci // Condition Immunities
         const damageImmunities = traits.di; // Damage Immunities
         const damageReductions = traits.dr; // Damage Reductions
         const damageVulnerabilities = traits.dv; // Damage Vulnerabilities
+        const hardness = traits.hardness
         const messageId = targetInfo.id;
-        const message = game.messages.get(messageId);
+        const message = game.messages.get(messageId)
         let systemRolls = game.messages.get(messageId).systemRolls;
         if(Object.keys(systemRolls).length == 0 && systemRolls.constructor == Object && game.messages.get(messageId).rolls) {
             systemRolls = game.messages.get(messageId).rolls;
@@ -108,7 +82,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
-                damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message);
+                damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message, hardness);
                 abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg);
                 attackDamage.forEach(damage => {
                     const damageTypes = damage.options?.damageType?.values || [];
@@ -127,9 +101,9 @@ function customApplyDamage(originalApplyDamage, value, config) {
                     } else if (abilityDmg && abilityDmg.length > 0) {
                         let updates = {};
                         for (const key in abilities) {
-                            updates[`system.abilities.${key}.damage`] = abilities[key].damage;
-                            updates[`system.abilities.${key}.drain`] = abilities[key].drain;
-                            updates[`system.abilities.${key}.userPenalty`] = abilities[key].userPenalty;
+                            updates[`system.abilities.${key}.damage`] = Math.floor(abilities[key].damage * damageMult) || 0;
+                            updates[`system.abilities.${key}.drain`] = Math.floor(abilities[key].drain * damageMult) || 0;
+                            updates[`system.abilities.${key}.userPenalty`] = Math.floor(abilities[key].userPenalty * damageMult) || 0;
                         };
                         token.actor.update(updates);
                     };
@@ -142,11 +116,11 @@ function customApplyDamage(originalApplyDamage, value, config) {
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
-                damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource);
+                damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, hardness);
         
                 attackDamage.forEach(damage => {
                     const healthFlag = game.messages.get(messageId).flags?.pf1?.subject?.health == "damage" ? 1 : -1;
-                    let rolledDamage = Math.floor((damage.number * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
+                    let rolledDamage = Math.floor((damage.results[0]?.result * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
 
                     totalDamage += rolledDamage;
                 });
@@ -157,6 +131,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
 };
 
 function sortDamage(attackDamage, itemSource, message) {
+    // Handle Actual Reduction from incoming damage
     const damageSortObjects = [];
     const dataActionId = message.flags?.pf1?.metadata?.action;
     const itemAction = [];
@@ -284,7 +259,7 @@ function sortDamage(attackDamage, itemSource, message) {
         } else {
             if (!damage.options?.flavor) {
                 const dmgNames = ["untyped"]
-                const damageAmount = damage.number;
+                const damageAmount = damage.results[0]?.result;
                 dmgNames.forEach((name, i) => {
                     dmgNames[i] = name.trim().toLowerCase();
                 });
@@ -292,7 +267,7 @@ function sortDamage(attackDamage, itemSource, message) {
                 return dmgNames;
             } else {
                 const dmgNames = damage.options?.flavor.split(',').map(name => name.trim());
-                const damageAmount = damage.number;
+                const damageAmount = damage.results[0]?.result;
                 dmgNames.forEach((name, i) => {
                     dmgNames[i] = name.trim().toLowerCase();
                 });
@@ -308,7 +283,7 @@ function sortDamage(attackDamage, itemSource, message) {
 
 
 
-function damageReductionCalculation (attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message) {
+function damageReductionCalculation (attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message, hardness) {
     const drCustom = damageReductions.custom.split(';');
     const totalDR = [];
     if(drCustom.length > 0 && drCustom[0].length > 0) {
@@ -338,7 +313,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             };
         });
     };
-    const damagePriorityArray = [...automateDamageConfig.weaponDamageTypes];
+    const damagePriorityArray = [...AutomateDamageModule?.automateDamageConfig?.weaponDamageTypes];
     let biggestDamageTypePriority = 0;
     if((itemSource?.type == "attack" && (itemSource?.subType == "weapon" || itemSource?.subType == "natural")) || itemSource?.type == "weapon") {
         let enhBonus = 0;
@@ -399,7 +374,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
     for(let i=0;i<totalDR.length;i++) {
         totalDR.forEach(dr => {
             if (dr.types.length === 2 && dr.types[0] === "" && dr.types[1] === "") {
-                dr.types = ["-"]; // Change to DR/-
+                dr.types = ["-"];
             } else {
                 dr.types = dr.types.filter(type => type !== "");
             }
@@ -409,10 +384,12 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
         });
     };
     totalDR.forEach(dr => {
-        const allWeaponDamageTypes = [...automateDamageConfig.weaponDamageTypes,...automateDamageConfig.additionalPhysicalDamageTypes].flat(2);
-        const isHardness = dr.types.some(type => {
-            return type === game.settings.get(MODULE.ID, "translations")?.hardness?.toLowerCase();
-        });
+        const allWeaponDamageTypes = [...AutomateDamageModule?.automateDamageConfig?.weaponDamageTypes,...AutomateDamageModule?.automateDamageConfig?.additionalPhysicalDamageTypes].flat(2);
+        const translations = game.settings.get(AutomateDamageModule?.MODULE.ID, "translations");
+        const hardnessTranslation = translations?.hardness?.toLowerCase();
+        
+        const isHardness = dr.types.some(type => type === hardnessTranslation) ||  hardness > 0;
+        
 
         if (isHardness) {
             const materials = itemSource?.system?.material;
@@ -490,7 +467,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                             const currentDamageSortObject = damageSortObjects[i];
                             for(let t=0;t<allWeaponDamageTypes.length;t++) {
                                 const currentWeaponDamageType = allWeaponDamageTypes[t];
-                                if(currentDamageSortObject.names.includes(currentWeaponDamageType)) { // without pushing the damage types with the if statements above, a weapon with an enhancement bonus of 1 does not bypass the types it's supposed to. I had to hard code the types above to make sure the script sees them in the damage types.
+                                if(currentDamageSortObject.names.includes(currentWeaponDamageType)) {
                                     found = true;
                                     if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
                                         attackDamage[currentDamageSortObject.index].total = Math.max(0, attackDamage[currentDamageSortObject.index].total-dr.amount);
@@ -507,16 +484,6 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                 };
             };
         };
-        if (isHardness) {
-            for (let i = 0; i < damageSortObjects.length; i++) {
-                const currentDamageSortObject = damageSortObjects[i];
-                if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
-                    attackDamage[currentDamageSortObject.index].total = Math.max(0, attackDamage[currentDamageSortObject.index].total - dr.amount);
-                } else { // If made through chat or macro
-                    attackDamage[currentDamageSortObject.index].number = Math.max(0, attackDamage[currentDamageSortObject.index].number - dr.amount);
-                }
-            }
-        }
     });
 };
 
@@ -642,7 +609,7 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
 
 function abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg) {
     if (!abilityDmg || abilityDmg.length === 0) return;
-    const translations = game.settings.get(MODULE.ID, "translations") || {};
+    const translations = game.settings.get(AutomateDamageModule?.MODULE.ID, "translations") || {};
     const constructTranslation = translations.construct || "Construct Traits";
     const undeadTranslation = translations.undead || "Undead Traits";
     const abilityFullNames = {
@@ -681,107 +648,105 @@ function abilityDamageCalculation(damageImmunities, conditionImmunities, abiliti
     };
     for (const dmg of abilityDmg) {
         const { vs, amount, ablDmgType, type } = dmg;
-        for (const abilityKey in vs) {
-            if (amount <= 0) continue; // Skip if there's no damage amount
+        if (amount <= 0) continue; // Skip if there's no damage amount
 
-            let isImmune = false;
-            if (damageImmunities.value.find(v => v.toLowerCase() === type.toLowerCase())) {
+        let isImmune = false;
+        if (damageImmunities.value.find(v => v.toLowerCase() === type.toLowerCase())) {
+            isImmune = true;
+            break;
+        }
+        if (conditionImmunities.custom.some(trait => trait.toLowerCase() === constructTranslation.toLowerCase())) {
+            dmg.amount = 0;
+            continue;
+        } else if (conditionImmunities.custom.some(trait => trait.toLowerCase() === undeadTranslation.toLowerCase())) {
+            if (ablDmgType === "damage" && (vs === "str" || vs === "dex" || vs === "con")) {
+                dmg.amount = 0;
+            } else if (ablDmgType === "drain" || ablDmgType === "penalty") {
+                dmg.amount = 0;
+            }
+            continue;
+        }
+        for (const immunity of damageImmunities.custom) {
+            const matchedKey = immunity.match(patterns.keyDamage) || immunity.match(patterns.keyDrain) || immunity.match(patterns.keyPenalty);
+            const immunityKey = matchedKey && reverseAbilityMap[matchedKey[1].toLowerCase()];
+
+            if (patterns.allAbilities.test(immunity)) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.allDamage.test(immunity) && ablDmgType === "damage") {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.allDrain.test(immunity) && ablDmgType === "drain") {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.allPenalty.test(immunity) && ablDmgType === "penalty") {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.keyDamage.test(immunity) && ablDmgType === "damage" && immunityKey === vs) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.keyDrain.test(immunity) && ablDmgType === "drain" && immunityKey === vs) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.keyPenalty.test(immunity) && ablDmgType === "penalty" && immunityKey === vs) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.allKey.test(immunity) && immunityKey === vs) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.mentalDamage.test(immunity) && ablDmgType === "damage" && (vs === "int" || vs === "wis" || vs === "cha")) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.mentalDrain.test(immunity) && ablDmgType === "drain" && (vs === "int" || vs === "wis" || vs === "cha")) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.mentalPenalty.test(immunity) && ablDmgType === "penalty" && (vs === "int" || vs === "wis" || vs === "cha")) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.allMental.test(immunity) && (vs === "int" || vs === "wis" || vs === "cha")) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.physicalDamage.test(immunity) && ablDmgType === "damage" && (vs === "str" || vs === "dex" || vs === "con")) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.physicalDrain.test(immunity) && ablDmgType === "drain" && (vs === "str" || vs === "dex" || vs === "con")) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.physicalPenalty.test(immunity) && ablDmgType === "penalty" && (vs === "str" || vs === "dex" || vs === "con")) {
+                dmg.amount = 0;
+                isImmune = true;
+                break;
+            } else if (patterns.allPhysical.test(immunity) && (vs === "str" || vs === "dex" || vs === "con")) {
+                dmg.amount = 0;
                 isImmune = true;
                 break;
             }
-            if (conditionImmunities.custom.some(trait => trait.toLowerCase() === constructTranslation.toLowerCase())) {
-                dmg.amount = 0;
-                continue;
-            } else if (conditionImmunities.custom.some(trait => trait.toLowerCase() === undeadTranslation.toLowerCase())) {
-                if (ablDmgType === "damage" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
-                    dmg.amount = 0;
-                } else if (ablDmgType === "drain" || ablDmgType === "penalty") {
-                    dmg.amount = 0;
-                }
-                continue;
-            }
-            for (const immunity of damageImmunities.custom) {
-                const matchedKey = immunity.match(patterns.keyDamage) || immunity.match(patterns.keyDrain) || immunity.match(patterns.keyPenalty);
-                const immunityKey = matchedKey && reverseAbilityMap[matchedKey[1].toLowerCase()];
-
-                if (patterns.allAbilities.test(immunity)) {
-                    dmg.amount = 0;
-                    isImmune = true;
+        }
+        if (!isImmune && abilities.hasOwnProperty(vs) && dmg.amount > 0) {
+            switch (ablDmgType) {
+                case "damage":
+                    abilities[vs].damage += dmg.amount;
                     break;
-                } else if (patterns.allDamage.test(immunity) && ablDmgType === "damage") {
-                    dmg.amount = 0;
-                    isImmune = true;
+                case "drain":
+                    abilities[vs].drain += dmg.amount;
                     break;
-                } else if (patterns.allDrain.test(immunity) && ablDmgType === "drain") {
-                    dmg.amount = 0;
-                    isImmune = true;
+                case "penalty":
+                    abilities[vs].userPenalty += dmg.amount;
                     break;
-                } else if (patterns.allPenalty.test(immunity) && ablDmgType === "penalty") {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.keyDamage.test(immunity) && ablDmgType === "damage" && immunityKey === abilityKey) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.keyDrain.test(immunity) && ablDmgType === "drain" && immunityKey === abilityKey) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.keyPenalty.test(immunity) && ablDmgType === "penalty" && immunityKey === abilityKey) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.allKey.test(immunity) && immunityKey === abilityKey) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.mentalDamage.test(immunity) && ablDmgType === "damage" && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.mentalDrain.test(immunity) && ablDmgType === "drain" && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.mentalPenalty.test(immunity) && ablDmgType === "penalty" && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.allMental.test(immunity) && (abilityKey === "int" || abilityKey === "wis" || abilityKey === "cha")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.physicalDamage.test(immunity) && ablDmgType === "damage" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.physicalDrain.test(immunity) && ablDmgType === "drain" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.physicalPenalty.test(immunity) && ablDmgType === "penalty" && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                } else if (patterns.allPhysical.test(immunity) && (abilityKey === "str" || abilityKey === "dex" || abilityKey === "con")) {
-                    dmg.amount = 0;
-                    isImmune = true;
-                    break;
-                }
-            }
-            if (!isImmune && abilities.hasOwnProperty(abilityKey) && dmg.amount > 0) {
-                switch (ablDmgType) {
-                    case "damage":
-                        abilities[abilityKey].damage += dmg.amount;
-                        break;
-                    case "drain":
-                        abilities[abilityKey].drain += dmg.amount;
-                        break;
-                    case "penalty":
-                        abilities[abilityKey].userPenalty += dmg.amount;
-                        break;
-                }
             }
         }
     }

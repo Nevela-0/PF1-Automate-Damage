@@ -5,7 +5,7 @@ export const automateDamageConfig = {
     additionalPhysicalDamageTypes: []
 };
 
-export function registerSettings() {
+function registerSettings() {
     Handlebars.registerHelper('colorStyle', function(color) {
         return new Handlebars.SafeString(`style="color: ${color};"`);
     });
@@ -42,7 +42,7 @@ export function registerSettings() {
         config: false,
         type: Array,
         default: [],
-        requiresReload: true 
+        requiresReload: true
     });
 
     game.settings.register(MODULE.ID, "translations", {
@@ -65,9 +65,16 @@ export function registerSettings() {
         type: TranslationForm,
         restricted: true
     });
+    game.settings.register(MODULE.ID, "migrationVersion", {
+        name: "Migration Version",
+        scope: "world",
+        config: false,
+        type: String,
+        default: ""
+    });
 }
 
-export function syncWeaponDamageTypes() {
+function syncWeaponDamageTypes() {
     const damageTypePriority = JSON.parse(game.settings.get(MODULE.ID, "damageTypePriority"));
     const materialTypes = pf1.registry.materialTypes;
     const alignments = pf1.config.damageResistances;
@@ -75,19 +82,19 @@ export function syncWeaponDamageTypes() {
     const weaponDamageTypes = damageTypePriority.map(priorityLevel => {
         return priorityLevel.map(type => {
             if (!type || type.trim() === '') {
-                return null; 
+                return null;
             }
             const material = materialTypes.find(m => m.name === type);
             const alignmentKey = Object.keys(alignments).find(key => alignments[key] === type);
 
             if (material) {
-                return material.id; 
+                return material.id;
             } else if (alignmentKey) {
-                return alignmentKey; 
+                return alignmentKey;
             } else {
-                return type.toLowerCase(); 
+                return type.toLowerCase();
             }
-        }).filter(type => type !== null); 
+        }).filter(type => type !== null);
     });
     automateDamageConfig.weaponDamageTypes = weaponDamageTypes;
     pf1.registry.damageTypes.forEach(damageType => {
@@ -107,7 +114,7 @@ function populateDefaultTypes() {
                 2: [],
                 3: [],
                 4: [],
-                5: alignments.map(key => pf1.config.damageResistances[key]), 
+                5: alignments.map(key => pf1.config.damageResistances[key]),
                 6: []
             };
 
@@ -148,13 +155,13 @@ function populateDefaultTypes() {
                     }
                 }
 
-                if (targetArray && !targetArray.includes(material.name)) { 
+                if (targetArray && !targetArray.includes(material.name)) {
                     targetArray.push(material.name);
                 }
             });
 
             automateDamageConfig.weaponDamageTypes = [
-                [], 
+                [],
                 ...Object.values(priorityLevels)
             ];
             await game.settings.set(MODULE.ID, "damageTypePriority", JSON.stringify(automateDamageConfig.weaponDamageTypes));
@@ -165,6 +172,133 @@ function populateDefaultTypes() {
         }
     });
 }
+
+async function handleReadyHook() {
+    const migrationKey = `migrationVersion`;
+    const currentVersion = game.modules.get(MODULE.ID).version;
+    let previousMigrationVersion;
+
+    try {
+        previousMigrationVersion = game.settings.get(MODULE.ID, migrationKey);
+    } catch (e) {
+        previousMigrationVersion = "0.0.0";
+    }
+    if (compareVersions(currentVersion, previousMigrationVersion) > 0) {
+        await performMigration();
+        await game.settings.set(MODULE.ID, migrationKey, currentVersion);
+    }
+    
+    const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
+    
+    customDamageTypes.forEach(damageType => {
+        const { value } = damageType;
+        if (!["physical", "energy", "misc"].includes(value.category.toLowerCase())) {
+            const localizationKey = `PF1.DamageTypeCategory.${value.category.toLowerCase()}`;
+            if (!game.i18n.translations.PF1.DamageTypeCategory) {
+                game.i18n.translations.PF1.DamageTypeCategory = {};
+            }
+            const capitalizedCategory = value.category
+                .split(/[\s-]/)
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ')
+                .replace(/\b([A-Za-z]+)-([A-Za-z]+)\b/g, (match, p1, p2) => `${p1}-${p2.charAt(0).toUpperCase()}${p2.slice(1)}`);
+
+            game.i18n.translations.PF1.DamageTypeCategory[value.category.toLowerCase()] = capitalizedCategory;
+        }
+    });
+}
+
+function handleInitHook() {
+    registerSettings();
+
+    Hooks.on('pf1RegisterDamageTypes', (registry) => {
+        const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
+
+        customDamageTypes.forEach(damageType => {
+            const { key, value } = damageType;
+            if (!["physical", "energy", "misc"].includes(value.category.toLowerCase().trim())) {
+                registry.constructor.CATEGORIES.push(value.category);
+            }
+            registry.register(MODULE.ID, key, value);
+        });
+    });
+    Hooks.callAll("pf1RegisterDamageTypes", pf1.registry.damageTypes);
+}
+
+function handleSetupHook() {
+    syncWeaponDamageTypes();
+}
+
+function compareVersions(v1, v2) {
+    const [major1, minor1 = 0, patch1 = 0] = v1.split('.').map(Number);
+    const [major2, minor2 = 0, patch2 = 0] = v2.split('.').map(Number);
+
+    if (major1 > major2) return 1;
+    if (major1 < major2) return -1;
+    if (minor1 > minor2) return 1;
+    if (minor1 < minor2) return -1;
+    if (patch1 > patch2) return 1;
+    if (patch1 < patch2) return -1;
+
+    return 0;
+}
+
+async function performMigration() {
+    const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
+
+    if (Array.isArray(customDamageTypes) && customDamageTypes.length > 0) {
+        const damageTypesToReRegister = [];
+
+        customDamageTypes.forEach(damageType => {
+            const flags = damageType.value.flags[MODULE.ID];
+            if (typeof flags.abilities === "object") {
+                damageTypesToReRegister.push(damageType);
+                const abilityKeys = Object.keys(flags.abilities);
+                flags.abilities = abilityKeys.join(",");
+            }
+        });
+        if (damageTypesToReRegister.length > 0) {
+            ui.notifications.info("Starting migration for custom damage types...");
+            unregisterDamageTypes(damageTypesToReRegister);
+            await game.settings.set(MODULE.ID, "customDamageTypes", customDamageTypes);
+            reRegisterDamageTypes(damageTypesToReRegister);
+
+            ui.notifications.info("Migration completed successfully!");
+        }
+    }
+}
+
+function unregisterDamageTypes(damageTypesToUnregister) {
+    const registry = pf1.registry.damageTypes;
+
+    damageTypesToUnregister.forEach(damageType => {
+        const { key } = damageType;
+        registry.unregister(MODULE.ID, key);
+    });
+
+    console.log("Unregistered damage types:", damageTypesToUnregister.map(dt => dt.key));
+}
+
+function reRegisterDamageTypes(damageTypesToReRegister) {
+    const registry = pf1.registry.damageTypes;
+
+    damageTypesToReRegister.forEach(damageType => {
+        const { key, value } = damageType;
+        registry.register(MODULE.ID, key, value);
+    });
+
+    console.log("Re-registered damage types:", damageTypesToReRegister.map(dt => dt.key));
+}
+export const AutomateDamageModule = {
+    MODULE,
+    automateDamageConfig,
+    registerSettings,
+    handleReadyHook,
+    handleInitHook,
+    handleSetupHook,
+    syncWeaponDamageTypes,
+    populateDefaultTypes
+};
 
 class DamageTypeFormApplication extends FormApplication {
     constructor(...args) {
@@ -190,7 +324,7 @@ class DamageTypeFormApplication extends FormApplication {
         return {
             customData: this.customData,
             savedDamageTypes: this.savedDamageTypes,
-            hassavedDamageTypes: this.savedDamageTypes.length > 0 
+            hassavedDamageTypes: this.savedDamageTypes.length > 0
         };
     }
   
@@ -214,25 +348,25 @@ class DamageTypeFormApplication extends FormApplication {
         const clickedRadio = $(event.currentTarget);
         if (this.selectedRadio && this.selectedRadio[0] === clickedRadio[0]) {
             clickedRadio.prop('checked', false);
-            this.selectedRadio = null; 
+            this.selectedRadio = null;
         } else {
             this.selectedRadio = clickedRadio;
         }
     }
   
     async _onSave(event) {
-        event.preventDefault(); 
-        const form = $(event.currentTarget).parents("form")[0]; 
+        event.preventDefault();
+        const form = $(event.currentTarget).parents("form")[0];
         const name = form.name.value.capitalize().trim();
         const img = form.img.value.trim();
         let category = form.category.value.trim();
         const customCategory = form["custom-category"].value.trim();
         if (customCategory) {
-            category = customCategory.charAt(0).toLowerCase() + customCategory.slice(1); 
+            category = customCategory.toLowerCase().trim()
         }
         const abbr = form.abbr.value.trim();
         const icon = form.icon.value.trim();
-        const color = form.color.value; 
+        const color = form.color.value;
         const isModifier = form.isModifier.checked;
         const flagType = form["flag-type"].value;
         const flagAbility = form["flag-ability"].value;
@@ -250,21 +384,21 @@ class DamageTypeFormApplication extends FormApplication {
   
         if (flagType && flagAbility) {
             vsAbility = true;
-            abilities.push(flagAbility); 
+            abilities.push(flagAbility);
         }
     
         const flags = {
             [MODULE.ID]: {
                 vsAbility: vsAbility,
-                abilities: abilities.join(','), 
-                type: flagType || "" 
+                abilities: abilities.join(','),
+                type: flagType || ""
             }
         };
         if (!name) return ui.notifications.error(game.i18n.localize("NOTIFICATIONS.errors.nameRequired"));
         if (!img && !icon) return ui.notifications.error(game.i18n.localize("NOTIFICATIONS.errors.imgOrIconRequired"));
         if (!category) return ui.notifications.error(game.i18n.localize("NOTIFICATIONS.errors.categoryRequired"));
   
-        const key = name.toLowerCase(); 
+        const key = name.toLowerCase();
         const newDamageType = {
             key,
             value: {
@@ -282,12 +416,12 @@ class DamageTypeFormApplication extends FormApplication {
         };
         this.savedDamageTypes.push(newDamageType);
         await game.settings.set(MODULE.ID, "customDamageTypes", this.savedDamageTypes);
-        this.render(); 
+        this.render();
         this._promptReload();
     }
   
     async _onClear(event) {
-        event.preventDefault(); 
+        event.preventDefault();
         const dialog = new Dialog({
             title: game.i18n.localize("FORM.damageTypeForm.clearTitle"),
             content: `<p>${game.i18n.localize("NOTIFICATIONS.confirmations.clearAll")}</p>`,
@@ -298,7 +432,7 @@ class DamageTypeFormApplication extends FormApplication {
                     callback: async () => {
                         await game.settings.set(MODULE.ID, "customDamageTypes", []);
                         this.savedDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
-                        this.render(); 
+                        this.render();
                     }
                 },
                 no: {
@@ -312,42 +446,42 @@ class DamageTypeFormApplication extends FormApplication {
     }
   
     async _onFilePicker(event) {
-        event.preventDefault(); 
-        const options = {}; 
+        event.preventDefault();
+        const options = {};
         const filePicker = new FilePicker({
             type: event.currentTarget.dataset.type,
             current: this.form.img.value,
             callback: path => {
-                this.form.img.value = path; 
+                this.form.img.value = path;
             },
             options: options
         });
     }
   
     async _onEdit(event) {
-        event.preventDefault(); 
-        const index = event.currentTarget.dataset.index; 
-        const item = this.savedDamageTypes[index]; 
+        event.preventDefault();
+        const index = event.currentTarget.dataset.index;
+        const item = this.savedDamageTypes[index];
         new EditDamageType(item, index, async (newValues) => {
-            const key = newValues.name.toLowerCase(); 
+            const key = newValues.name.toLowerCase();
             this.savedDamageTypes[index] = {
                 key,
                 value: {
                     ...newValues,
                     flags: {
-                        ...item.value.flags, 
+                        ...item.value.flags,
                         [MODULE.ID]: {
-                            ...item.value.flags[MODULE.ID], 
-                            ...newValues.flags[MODULE.ID], 
+                            ...item.value.flags[MODULE.ID],
+                            ...newValues.flags[MODULE.ID],
                         }
                     },
                     namespace: MODULE.ID,
                     _id: key,
-                    color: newValues.color 
+                    color: newValues.color
                 }
             };
             await game.settings.set(MODULE.ID, "customDamageTypes", this.savedDamageTypes);
-            this.render(); 
+            this.render();
             this._promptReload();
         }).render(true);
     }
@@ -372,9 +506,9 @@ class DamageTypeFormApplication extends FormApplication {
     }
   
     async _onDelete(event) {
-        event.preventDefault(); 
-        const index = event.currentTarget.dataset.index; 
-        const item = this.savedDamageTypes[index]; 
+        event.preventDefault();
+        const index = event.currentTarget.dataset.index;
+        const item = this.savedDamageTypes[index];
         const dialog = new Dialog({
             title: game.i18n.localize("FORM.damageTypeForm.deleteTitle").replace("{value}", item.value.name),
             content: `<p>${game.i18n.localize("NOTIFICATIONS.confirmations.deleteValue").replace("{value}", item.value.name)}</p>`,
@@ -385,7 +519,7 @@ class DamageTypeFormApplication extends FormApplication {
                     callback: async () => {
                         this.savedDamageTypes.splice(index, 1);
                         await game.settings.set(MODULE.ID, "customDamageTypes", this.savedDamageTypes);
-                        this.render(); 
+                        this.render();
                     }
                 },
                 no: {
@@ -432,7 +566,7 @@ class EditDamageType extends FormApplication {
         return {
             item: {
                 ...this.item.value,
-                category: categoryDisplay  
+                category: categoryDisplay
             },
             moduleId: MODULE.ID
         };
@@ -442,7 +576,7 @@ class EditDamageType extends FormApplication {
         super.activateListeners(html);
         this.selectedRadio = html.find('input[name="flag-type"]:checked');
         html.find(`input[name="flag-type"][value="${this.item.value.flags[MODULE.ID]?.type}"]`).prop('checked', true);
-        html.find(`select[name="flag-ability"]`).val(Object.keys(this.item.value.flags[MODULE.ID]?.abilities)[0]);
+        html.find(`select[name="flag-ability"]`).val(Object.keys(this.item.value.flags[MODULE.ID]?.abilities));
     
         html.find('button.file-picker').click(this._onFilePicker.bind(this));
         html.find('input[name="custom-category"]').on('focus', this._onCustomCategoryFocus.bind(this));
@@ -488,7 +622,7 @@ class EditDamageType extends FormApplication {
         let category = formData.get("category");
         const customCategory = formData.get("custom-category").trim();
         if (!["physical", "energy", "misc"].includes(category)) {
-            category = customCategory.charAt(0).toLowerCase() + customCategory.slice(1);
+            category = customCategory.toLowerCase().trim()
         }
 
         const abbr = formData.get("abbr").trim();
@@ -539,10 +673,10 @@ class EditDamageType extends FormApplication {
 
         const updatedItem = {
             name,
-            img: (this.initialImg === "" && img !== "" && this.initialIcon !== "") ? img : "",
+            img: (this.initialImg && img === this.initialImg && icon && !this.initialIcon) ? "" : img,
             category,
             abbr,
-            icon: (this.initialIcon === "" && icon !== "" && this.initialImg !== "") ? icon : "",
+            icon: (this.initialIcon && icon === this.initialIcon && img && !this.initialImg) ? "" : icon,
             color,
             isModifier,
             flags: updatedFlags
@@ -569,14 +703,14 @@ class DamagePriorityForm extends FormApplication {
             title: game.i18n.localize("FORM.damagePriorityForm.title"),
             template: "modules/pf1-automate-damage/templates/damage-priority-form.html",
             width: 500,
-            height: "auto", 
+            height: "auto",
             closeOnSubmit: true
         });
     }
 
     constructor(...args) {
         super(...args);
-        this.originalPriorityLevels = JSON.parse(JSON.stringify(game.settings.get(MODULE.ID, "damageTypePriority"))); 
+        this.originalPriorityLevels = JSON.parse(JSON.stringify(game.settings.get(MODULE.ID, "damageTypePriority")));
     }
 
     getData() {
@@ -613,7 +747,7 @@ class DamagePriorityForm extends FormApplication {
     async _onDeleteRow(event) {
         event.preventDefault();
         const row = event.currentTarget.closest('tr');
-        const index = row.rowIndex - 1; 
+        const index = row.rowIndex - 1;
         if (!this.priorityLevels) {
             console.error("priorityLevels is undefined in _onDeleteRow");
             return;
@@ -639,7 +773,7 @@ class DamagePriorityForm extends FormApplication {
     }
 
     async _updateObject(event, formData) {
-        event.preventDefault(); 
+        event.preventDefault();
         const form = event.currentTarget;
         const disabledFields = form.querySelectorAll('input[disabled]');
         disabledFields.forEach(field => field.disabled = false);
@@ -650,14 +784,12 @@ class DamagePriorityForm extends FormApplication {
                 const index = parseInt(key.split('.')[1]);
                 const types = value.split(',')
                     .map(type => type.trim())
-                    .filter(type => type !== ''); 
-                priorityLevels[index] = types; 
+                    .filter(type => type !== '');
+                priorityLevels[index] = types;
             }
         });
-
         await game.settings.set(MODULE.ID, "damageTypePriority", JSON.stringify(priorityLevels));
         this.priorityLevels = priorityLevels;
-
         this.render(false);
         this._promptReload();
     }
@@ -694,9 +826,9 @@ class DamagePriorityForm extends FormApplication {
                     icon: '<i class="fas fa-check"></i>',
                     label: game.i18n.localize("BUTTONS.yes"),
                     callback: async () => {
-                        await populateDefaultTypes(); 
-                        this.priorityLevels = JSON.parse(await game.settings.get(MODULE.ID, "damageTypePriority")); 
-                        this.render(true); 
+                        await populateDefaultTypes();
+                        this.priorityLevels = JSON.parse(await game.settings.get(MODULE.ID, "damageTypePriority"));
+                        this.render(true);
                     }
                 },
                 no: {
@@ -729,7 +861,7 @@ class DamagePriorityForm extends FormApplication {
 
     close(options = {}) {
         if (!options.force && !options.submit) {
-            game.settings.set(MODULE.ID, "damageTypePriority", this.originalPriorityLevels); 
+            game.settings.set(MODULE.ID, "damageTypePriority", this.originalPriorityLevels);
         }
         super.close(options);
     }
@@ -743,7 +875,7 @@ class DRTypeEditor extends FormApplication {
         this.materialTypes = pf1.registry.materialTypes;
         this.damageResistances = pf1.config.damageResistances;
         this.availableTypes = ["Custom", ...this.materialTypes.map(m => m.name), ...Object.values(this.damageResistances).sort((a, b) => a.localeCompare(b))];
-        this.originalDrTypes = [...drTypes]; 
+        this.originalDrTypes = [...drTypes];
     }
 
     static get defaultOptions() {
@@ -783,7 +915,7 @@ class DRTypeEditor extends FormApplication {
             const customType = customTypeInput.value.trim();
             if (customType) {
                 this.drTypes.push(customType);
-                customTypeInput.value = ''; 
+                customTypeInput.value = '';
             }
         }
         this.render(false);
@@ -833,14 +965,14 @@ class DRTypeEditor extends FormApplication {
                         const resistanceKey = Object.keys(this.damageResistances).find(key => this.damageResistances[key] === value);
 
                         if (material) {
-                            updatedTypes.push(material.name); 
+                            updatedTypes.push(material.name);
                         } else if (resistanceKey) {
-                            updatedTypes.push(this.damageResistances[resistanceKey]); 
+                            updatedTypes.push(this.damageResistances[resistanceKey]);
                         } else {
-                            updatedTypes.push(value.capitalize()); 
+                            updatedTypes.push(value.capitalize());
                         }
                     } else {
-                        updatedTypes.push(value.capitalize()); 
+                        updatedTypes.push(value.capitalize());
                     }
                 }
             }
