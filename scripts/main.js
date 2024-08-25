@@ -120,7 +120,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
         
                 attackDamage.forEach(damage => {
                     const healthFlag = game.messages.get(messageId).flags?.pf1?.subject?.health == "damage" ? 1 : -1;
-                    let rolledDamage = Math.floor((damage.results[0]?.result * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
+                    let rolledDamage = Math.floor((damage.number * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
 
                     totalDamage += rolledDamage;
                 });
@@ -259,7 +259,7 @@ function sortDamage(attackDamage, itemSource, message) {
         } else {
             if (!damage.options?.flavor) {
                 const dmgNames = ["untyped"]
-                const damageAmount = damage.results[0]?.result;
+                const damageAmount = damage.number;
                 dmgNames.forEach((name, i) => {
                     dmgNames[i] = name.trim().toLowerCase();
                 });
@@ -267,7 +267,7 @@ function sortDamage(attackDamage, itemSource, message) {
                 return dmgNames;
             } else {
                 const dmgNames = damage.options?.flavor.split(',').map(name => name.trim());
-                const damageAmount = damage.results[0]?.result;
+                const damageAmount = damage.number;
                 dmgNames.forEach((name, i) => {
                     dmgNames[i] = name.trim().toLowerCase();
                 });
