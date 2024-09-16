@@ -61,10 +61,11 @@ This allows for flexible handling of hardness in different combat scenarios, giv
 - **Silver and Alchemical Silver are treated as the same material.** If you add Silver as a custom material it will not bypass the Silver DR from the system. You will have to add a custom DR with the same name for that.
 
 ### Damage Roll Cards
-- When creating a macro or chat for damage rolls (using /d or /damage), you can specify a "type" for the damage using what the system refers to as "flavor," indicated by brackets after the damage. You can include multiple types by separating each type with a comma (,). 
+- When creating a macro or chat for damage rolls (using /d or /damage), you can specify a "type" for the damage using what the system refers to as "flavor," indicated by brackets after the damage. You can include multiple types by separating each type with a comma (,). You can also separate damage types so that each damage dice(s) will have different damage types.
   
-  **Example**:
+  **Examples**:
   - /d 3d6[Fire, Slashing].
+  - /d 1d8[Acid] + 2d4[Slashing, Piercing] + 5[Negative]
 
 ### Ammunition
 - **Material**: Since ammunition does not have material supported by the PF1E system yet, you can add a dictionary flag named "Material" with a value of the material you want the ammo to be. You can add magic in this dictionary flag to treat the ammo as magic to overcome DR in case it does not have an enhancement bonus.
