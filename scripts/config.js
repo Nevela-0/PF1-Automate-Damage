@@ -13,7 +13,7 @@ function registerSettings() {
     game.settings.register(MODULE.ID, "damageTypePriority", {
         name: game.i18n.localize("SETTINGS.damageTypePriority.name"),
         hint: game.i18n.localize("SETTINGS.damageTypePriority.hint"),
-        default: JSON.stringify([[], ["magic"], [], ["alchemicalsilver", "coldiron", "mithral", "nexavarianSteel", "sunsilver"], ["adamantine"], ["lawful", "chaotic", "good", "evil"], ["epic"]]),
+        default: JSON.stringify([[], ["magic"], [], ["alchemicalSilver", "coldIron", "mithral", "nexavarianSteel", "sunsilver"], ["adamantine"], ["lawful", "chaotic", "good", "evil"], ["epic"]]),
         scope: "world",
         type: String,
         config: false
@@ -125,8 +125,8 @@ function populateDefaultTypes() {
                     case 'magic':
                         targetArray = priorityLevels[1];
                         break;
-                    case 'coldiron':
-                    case 'alchemicalsilver':
+                    case 'coldIron':
+                    case 'alchemicalSilver':
                         targetArray = priorityLevels[3];
                         break;
                     case 'adamantine':
@@ -142,8 +142,8 @@ function populateDefaultTypes() {
                         case 'magic':
                             targetArray = priorityLevels[1];
                             break;
-                        case 'coldiron':
-                        case 'alchemicalsilver':
+                        case 'coldIron':
+                        case 'alchemicalSilver':
                             targetArray = priorityLevels[3];
                             break;
                         case 'adamantine':
@@ -208,21 +208,21 @@ async function handleReadyHook() {
     });
 }
 
-function handleInitHook() {
+function handleRegistryHook(registry) {
     registerSettings();
+    const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
 
-    Hooks.on('pf1RegisterDamageTypes', (registry) => {
-        const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
+    customDamageTypes.forEach(damageType => {
+        const { key, value } = damageType;
 
-        customDamageTypes.forEach(damageType => {
-            const { key, value } = damageType;
-            if (!["physical", "energy", "misc"].includes(value.category.toLowerCase().trim())) {
-                registry.constructor.CATEGORIES.push(value.category);
-            }
-            registry.register(MODULE.ID, key, value);
-        });
+        // Register the custom category if it's not "physical," "energy," or "misc"
+        if (!["physical", "energy", "misc"].includes(value.category.toLowerCase().trim())) {
+            registry.constructor.CATEGORIES.push(value.category);
+        }
+
+        // Register the damage type
+        registry.register(MODULE.ID, key, value);
     });
-    Hooks.callAll("pf1RegisterDamageTypes", pf1.registry.damageTypes);
 }
 
 function handleSetupHook() {
@@ -294,7 +294,7 @@ export const AutomateDamageModule = {
     automateDamageConfig,
     registerSettings,
     handleReadyHook,
-    handleInitHook,
+    handleRegistryHook,
     handleSetupHook,
     syncWeaponDamageTypes,
     populateDefaultTypes

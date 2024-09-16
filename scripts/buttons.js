@@ -123,12 +123,11 @@ function applyHealing(damageInfo, multiplier) {
                             }
                             token.actor.update(updates);
                         });
-                    } else {
-                        healDamage += totalDamage;
                     }
                 }
             }
         });
+        healDamage += totalDamage;
     });
     if (healDamage > 0) {
         healDamage = healDamage * -1 * multiplier;
