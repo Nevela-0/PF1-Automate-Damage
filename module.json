@@ -19,7 +19,7 @@
       {
         "id": "pf1",
 				"compatibility": {
-					"minimum": "10.4"
+					"minimum": "10.7"
 				},
         "type": "system"
       }
