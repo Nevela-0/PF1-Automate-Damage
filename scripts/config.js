@@ -208,21 +208,21 @@ async function handleReadyHook() {
     });
 }
 
-function handleInitHook() {
+function handleRegistryHook(registry) {
     registerSettings();
+    const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
 
-    Hooks.on('pf1RegisterDamageTypes', (registry) => {
-        const customDamageTypes = game.settings.get(MODULE.ID, "customDamageTypes");
+    customDamageTypes.forEach(damageType => {
+        const { key, value } = damageType;
 
-        customDamageTypes.forEach(damageType => {
-            const { key, value } = damageType;
-            if (!["physical", "energy", "misc"].includes(value.category.toLowerCase().trim())) {
-                registry.constructor.CATEGORIES.push(value.category);
-            }
-            registry.register(MODULE.ID, key, value);
-        });
+        // Register the custom category if it's not "physical," "energy," or "misc"
+        if (!["physical", "energy", "misc"].includes(value.category.toLowerCase().trim())) {
+            registry.constructor.CATEGORIES.push(value.category);
+        }
+
+        // Register the damage type
+        registry.register(MODULE.ID, key, value);
     });
-    Hooks.callAll("pf1RegisterDamageTypes", pf1.registry.damageTypes);
 }
 
 function handleSetupHook() {
@@ -294,7 +294,7 @@ export const AutomateDamageModule = {
     automateDamageConfig,
     registerSettings,
     handleReadyHook,
-    handleInitHook,
+    handleRegistryHook,
     handleSetupHook,
     syncWeaponDamageTypes,
     populateDefaultTypes

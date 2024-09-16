@@ -2,7 +2,7 @@ import { AutomateDamageModule } from './config.js';
 import { onRenderChatMessage } from './buttons.js';
 
 Hooks.on("renderChatMessage", (app, html, data) => {onRenderChatMessage(html)});
-Hooks.once("init", AutomateDamageModule.handleInitHook);
+Hooks.on('pf1RegisterDamageTypes', (registry) => {AutomateDamageModule.handleRegistryHook(registry)});
 Hooks.once("setup", AutomateDamageModule.handleSetupHook);
 Hooks.once("ready", () => {
     AutomateDamageModule.handleReadyHook();
@@ -25,8 +25,7 @@ const targetInfo = {
     id: "",
     buttonType: "",
     attackIndex: "",
-    isCritical: false,
-    isCriticalButton: false
+    isCritical: false
 };
 
 function interceptCardData(wrapped, actionName, elementObject) {
@@ -40,14 +39,17 @@ function interceptCardData(wrapped, actionName, elementObject) {
         targetInfo.buttonType = elementObject.button.dataset.tooltip || elementObject.button.innerText;
         if (chatAttack) {
             targetInfo.attackIndex = chatAttack.getAttribute('data-index');
-            const isCriticalConfirmation = chatAttack.querySelector('.attack-flavor.crit-confirm');
-            const isCriticalDamage = chatAttack.querySelector('.damage .inline-action[data-tooltip*="Critical Damage"]');
-            targetInfo.isCritical = !!isCriticalConfirmation || !!isCriticalDamage;
-            const damageElement = elementObject.button.closest('th');
-            if (damageElement && damageElement.textContent.includes('Critical Damage')) {
-                targetInfo.isCriticalButton = true;
+            let damageElement = elementObject.button.closest('th[data-damage-type]');
+            if (!damageElement) {
+                const buttonType = elementObject.button.getAttribute('data-type'); // 'critical' or 'normal'
+                if (buttonType) {
+                    damageElement = chatAttack.querySelector(`th[data-damage-type="${buttonType}"]`);
+                };
+            };
+            if (damageElement) {
+                targetInfo.isCritical = damageElement.getAttribute('data-damage-type') === 'critical';
             } else {
-                targetInfo.isCriticalButton = false;
+                targetInfo.isCritical = false;
             };
         };
     };
@@ -73,11 +75,22 @@ function customApplyDamage(originalApplyDamage, value, config) {
         };
         const itemSource = game.messages.get(messageId).itemSource;
         const itemType = game.messages.get(messageId).itemSource?.type;
-        const damageMult = targetInfo.buttonType == "PF1.ApplyHalf" || targetInfo.buttonType == "Apply Half" ? 0.5 : 1;
+        let damageMult = targetInfo.buttonType == "PF1.ApplyHalf" || targetInfo.buttonType == "Apply Half" ? 0.5 : 1;
+        if (targetInfo.buttonType.includes("percentage")) {
+            const percentageMatch = targetInfo.buttonType.match(/(\d+)%/);
+            if (percentageMatch) {
+                const percentageValue = parseInt(percentageMatch[1], 10);
+                if (percentageValue === 50) {
+                    damageMult = 0.5;
+                } else if (percentageValue === 100) {
+                    damageMult = 1;
+                };
+            };
+        };
         if (systemRolls?.attacks?.length > 0) {
             const attack = systemRolls.attacks[targetInfo.attackIndex];
             if (attack.damage?.length > 0) {
-                const attackDamage = targetInfo.isCriticalButton ? JSON.parse(JSON.stringify([...attack.damage, ...attack.critDamage])) : JSON.parse(JSON.stringify(attack.damage));
+                const attackDamage = targetInfo.isCritical ? JSON.parse(JSON.stringify([...attack.damage, ...attack.critDamage])) : JSON.parse(JSON.stringify(attack.damage));
                 const {damageSortObjects, damageTypes, itemAction, abilityDmg} = sortDamage(attackDamage, itemSource, message);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
@@ -119,8 +132,9 @@ function customApplyDamage(originalApplyDamage, value, config) {
                 damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, hardness);
         
                 attackDamage.forEach(damage => {
-                    const healthFlag = game.messages.get(messageId).flags?.pf1?.subject?.health == "damage" ? 1 : -1;
-                    let rolledDamage = Math.floor((damage.number * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
+                    const flags = game.messages.get(messageId).flags?.pf1?.subject?.health;
+                    const healthFlag = (flags === undefined || flags === null || Object.keys(game.messages.get(messageId).flags).length === 0 || flags === "damage") ? 1 : -1;
+                    let rolledDamage = Math.floor((damage.total * healthFlag) * damageMult) || 0; // Default to 0 if total damage is not defined
 
                     totalDamage += rolledDamage;
                 });
@@ -257,22 +271,30 @@ function sortDamage(attackDamage, itemSource, message) {
             }
             return dmgNames;
         } else {
-            if (!damage.options?.flavor) {
-                const dmgNames = ["untyped"]
-                const damageAmount = damage.number;
-                dmgNames.forEach((name, i) => {
-                    dmgNames[i] = name.trim().toLowerCase();
-                });
-                damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
-                return dmgNames;
-            } else {
-                const dmgNames = damage.options?.flavor.split(',').map(name => name.trim());
-                const damageAmount = damage.number;
-                dmgNames.forEach((name, i) => {
-                    dmgNames[i] = name.trim().toLowerCase();
-                });
-                damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
-                return dmgNames;
+            if (damage.class === "NumericTerm" || damage.class === "Die") {
+                if (!damage.options?.flavor) {
+                    const dmgNames = ["untyped"]
+                    const damageAmount = damage.class === "NumericTerm"
+                    ? damage.number
+                    : damage.results.filter(result => result.active).reduce((sum, result) => sum + result.result, 0);
+                    damage.total = damageAmount;
+                    dmgNames.forEach((name, i) => {
+                        dmgNames[i] = name.trim().toLowerCase();
+                    });
+                    damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
+                    return dmgNames;
+                } else {
+                    const dmgNames = damage.options?.flavor.split(',').map(name => name.trim());
+                    const damageAmount = damage.class === "NumericTerm"
+                    ? damage.number
+                    : damage.results.filter(result => result.active).reduce((sum, result) => sum + result.result, 0);
+                    damage.total = damageAmount;
+                    dmgNames.forEach((name, i) => {
+                        dmgNames[i] = name.trim().toLowerCase();
+                    });
+                    damageSortObjects.push({ names: dmgNames, amount: damageAmount, index });
+                    return dmgNames;
+                };
             };
         };
     }).flat();
@@ -280,8 +302,6 @@ function sortDamage(attackDamage, itemSource, message) {
 
     return { damageSortObjects, damageTypes, itemAction, abilityDmg };
 }
-
-
 
 function damageReductionCalculation (attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message, hardness) {
     const drCustom = damageReductions.custom.split(';');
@@ -427,6 +447,13 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                 return; // Skip applying hardness reduction
             }
         }
+
+        let remainder = {
+            types: null,
+            index: null,
+            value: null
+        };
+
         if(dr.operator == false) {
             for(let i = 0; i < dr.types.length ;i++) {
                 const drType = dr.types[i];
@@ -440,6 +467,30 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                             if(currentDamageSortObject.names.includes(currentWeaponDamageType)) {
                                 found = true;
                                 if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
+                                    if (attackDamage[currentDamageSortObject.index].total-dr.amount < 0) {
+                                        remainder.value = attackDamage[currentDamageSortObject.index].total-dr.amount;
+                                        remainder.index = currentDamageSortObject.index
+                                        remainder.types = currentDamageSortObject.names
+
+                                        for (let index = 0; index < attackDamage.length; index++) {
+                                            const damageRoll = attackDamage[index];
+                                            if (index !== currentDamageSortObject.index) {
+                                                const damageValues = damageRoll.options.damageType.values;
+                                                const customDamageType = damageRoll.options.damageType.custom;
+
+                                                const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                            
+                                                const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
+                                            
+                                                if (exactMatch) {
+                                                    attackDamage[index].total =  Math.max(0, attackDamage[index].total+remainder.value);
+                                                    if(attackDamage[index].total >= 0) {
+                                                        break;
+                                                    }
+                                                };
+                                            };
+                                        };
+                                    };
                                     attackDamage[currentDamageSortObject.index].total = Math.max(0, attackDamage[currentDamageSortObject.index].total-dr.amount);
                                     break;
                                 } else { // If made through chat or macro
@@ -470,6 +521,30 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                                 if(currentDamageSortObject.names.includes(currentWeaponDamageType)) {
                                     found = true;
                                     if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
+                                        if (attackDamage[currentDamageSortObject.index].total-dr.amount < 0) {
+                                            remainder.value = attackDamage[currentDamageSortObject.index].total-dr.amount;
+                                            remainder.index = currentDamageSortObject.index
+                                            remainder.types = currentDamageSortObject.names
+    
+                                            for (let index = 0; index < attackDamage.length; index++) {
+                                                const damageRoll = attackDamage[index];
+                                                if (index !== currentDamageSortObject.index) {
+                                                    const damageValues = damageRoll.options.damageType.values;
+                                                    const customDamageType = damageRoll.options.damageType.custom;
+    
+                                                    const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                                
+                                                    const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
+                                                
+                                                    if (exactMatch) {
+                                                        attackDamage[index].total =  Math.max(0, attackDamage[index].total+remainder.value);
+                                                        if(attackDamage[index].total >= 0) {
+                                                            break;
+                                                        }
+                                                    };
+                                                };
+                                            };
+                                        };
                                         attackDamage[currentDamageSortObject.index].total = Math.max(0, attackDamage[currentDamageSortObject.index].total-dr.amount);
                                         break;
                                     } else { // If made through chat or macro
@@ -559,6 +634,11 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
 
     totalER.forEach(er => {
         let found = false;
+        let remainder = {
+            types: null,
+            index: null,
+            value: null
+        };
         if (er.operator === false) {
             for (let i = 0; i < er.types.length; i++) {
                 const erType = er.types[i];
@@ -574,6 +654,30 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                     const currentDamageSortObject = damageSortObjects[j];
                     if (er.types.every(type => currentDamageSortObject.names.includes(type))) {
                         if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
+                            if (attackDamage[currentDamageSortObject.index].total-dr.amount < 0) {
+                                remainder.value = attackDamage[currentDamageSortObject.index].total-dr.amount;
+                                remainder.index = currentDamageSortObject.index
+                                remainder.types = currentDamageSortObject.names
+
+                                for (let index = 0; index < attackDamage.length; index++) {
+                                    const damageRoll = attackDamage[index];
+                                    if (index !== currentDamageSortObject.index) {
+                                        const damageValues = damageRoll.options.damageType.values;
+                                        const customDamageType = damageRoll.options.damageType.custom;
+
+                                        const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                    
+                                        const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
+                                    
+                                        if (exactMatch) {
+                                            attackDamage[index].total =  Math.max(0, attackDamage[index].total+remainder.value);
+                                            if(attackDamage[index].total >= 0) {
+                                                break;
+                                            }
+                                        };
+                                    };
+                                };
+                            };
                             const newTotal = Math.max(0, attackDamage[currentDamageSortObject.index].total - er.amount);
                             attackDamage[currentDamageSortObject.index].total = newTotal;
                         } else { // If made through chat or macro
@@ -591,6 +695,30 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                         const currentDamageSortObject = damageSortObjects[j];
                         if (currentDamageSortObject.names.includes(erType)) {
                             if (attackDamage[currentDamageSortObject.index].total) {
+                                if (attackDamage[currentDamageSortObject.index].total-dr.amount < 0) {
+                                    remainder.value = attackDamage[currentDamageSortObject.index].total-dr.amount;
+                                    remainder.index = currentDamageSortObject.index
+                                    remainder.types = currentDamageSortObject.names
+
+                                    for (let index = 0; index < attackDamage.length; index++) {
+                                        const damageRoll = attackDamage[index];
+                                        if (index !== currentDamageSortObject.index) {
+                                            const damageValues = damageRoll.options.damageType.values;
+                                            const customDamageType = damageRoll.options.damageType.custom;
+
+                                            const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                        
+                                            const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
+                                        
+                                            if (exactMatch) {
+                                                attackDamage[index].total =  Math.max(0, attackDamage[index].total+remainder.value);
+                                                if(attackDamage[index].total >= 0) {
+                                                    break;
+                                                }
+                                            };
+                                        };
+                                    };
+                                };
                                 const newTotal = Math.max(0, attackDamage[currentDamageSortObject.index].total - er.amount);
                                 attackDamage[currentDamageSortObject.index].total = newTotal;
                             } else {
