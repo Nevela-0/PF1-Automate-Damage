@@ -13,7 +13,7 @@ function overrideApplyDamage () {
     libWrapper.register('pf1-automate-damage', 'pf1.documents.item.ItemPF._onChatCardAction', interceptCardData, libWrapper.MIXED);
 
     libWrapper.register('pf1-automate-damage', 'pf1.documents.actor.ActorPF.applyDamage', function (wrapped, value, config) {
-        if (canvas.tokens.controlled.length && !config.healing) {
+        if (canvas.tokens.controlled.length && (!config.healing && value >= 0)) {
             customApplyDamage(wrapped, value, config);
         } else {
             return wrapped(value, config);
@@ -94,6 +94,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
                 const {damageSortObjects, damageTypes, itemAction, abilityDmg} = sortDamage(attackDamage, itemSource, message);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
+                hardnessCalculation(attackDamage, eRes, damageReductions, damageTypes, damageSortObjects, itemSource, hardness);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
                 damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message, hardness);
                 abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg);
@@ -128,6 +129,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
                 const {damageSortObjects, damageTypes} = sortDamage(attackDamage, messageId, message);
                 damageImmunityCalculation(damageImmunities, attackDamage, damageSortObjects);
                 damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, damageSortObjects);
+                hardnessCalculation(attackDamage, eRes, damageReductions, damageTypes, damageSortObjects, itemSource, hardness);
                 elementalResistancesCalculation(eRes, attackDamage, damageTypes, damageSortObjects);
                 damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, hardness);
         
@@ -405,48 +407,6 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
     };
     totalDR.forEach(dr => {
         const allWeaponDamageTypes = [...AutomateDamageModule?.automateDamageConfig?.weaponDamageTypes,...AutomateDamageModule?.automateDamageConfig?.additionalPhysicalDamageTypes].flat(2);
-        const translations = game.settings.get(AutomateDamageModule?.MODULE.ID, "translations");
-        const hardnessTranslation = translations?.hardness?.toLowerCase();
-        
-        const isHardness = dr.types.some(type => type === hardnessTranslation) ||  hardness > 0;
-        
-
-        if (isHardness) {
-            const materials = itemSource?.system?.material;
-            let isAdamantine = false;
-            let hardnessToIgnore = 0;
-            const booleanFlags = itemSource?.system?.flags?.boolean || {};
-            const dictionaryFlags = itemSource?.system?.flags?.dictionary || {};
-            for (let key in booleanFlags) {
-                if (key.toLowerCase() === "ignorehardness" && booleanFlags[key]) {
-                    hardnessToIgnore = dr.amount; // Ignore all hardness
-                    break;
-                }
-            }
-            for (let key in dictionaryFlags) {
-                if (key.toLowerCase() === "ignorehardness") {
-                    const value = parseInt(dictionaryFlags[key], 10);
-                    if (!isNaN(value)) {
-                        hardnessToIgnore = Math.max(hardnessToIgnore, value); // Use the maximum value if multiple exist
-                    }
-                }
-            }
-            if (hardnessToIgnore >= dr.amount) {
-                return; // Skip applying hardness reduction
-            } else if (hardnessToIgnore > 0) {
-                dr.amount -= hardnessToIgnore; // Reduce the hardness by the ignored amount
-            }
-            if (materials) {
-                if (materials.normal?.value?.toLowerCase() === 'adamantine' ||
-                    materials.addon?.includes('adamantine')) {
-                    isAdamantine = true;
-                }
-            }
-
-            if (isAdamantine && dr.amount <= 20) {
-                return; // Skip applying hardness reduction
-            }
-        }
 
         let remainder = {
             types: null,
@@ -721,9 +681,11 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                                 };
                                 const newTotal = Math.max(0, attackDamage[currentDamageSortObject.index].total - er.amount);
                                 attackDamage[currentDamageSortObject.index].total = newTotal;
+                                break;
                             } else {
                                 const newTotal = Math.max(0, attackDamage[currentDamageSortObject.index].number - er.amount);
                                 attackDamage[currentDamageSortObject.index].number = newTotal;
+                                break;
 
                             };
                         };
@@ -733,6 +695,95 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
             };
         };
     });
+};
+
+function hardnessCalculation(attackDamage, eRes, damageReductions, damageTypes, damageSortObjects, itemSource, hardness) {
+    if (hardness <= 0) return;
+
+    // Check if the attack can ignore or reduce hardness
+    let hardnessToIgnore = 0;
+    let isAdamantine = false;
+
+    // Check for ignoreHardness flags on the item
+    const booleanFlags = itemSource?.system?.flags?.boolean || {};
+    const dictionaryFlags = itemSource?.system?.flags?.dictionary || {};
+
+    // Check boolean flags for ignoreHardness
+    for (let key in booleanFlags) {
+        if (key.toLowerCase() === "ignorehardness" && booleanFlags[key]) {
+            hardnessToIgnore = hardness; // Ignore all hardness
+            break;
+        }
+    }
+
+    // Check dictionary flags for ignoreHardness value
+    for (let key in dictionaryFlags) {
+        if (key.toLowerCase() === "ignorehardness") {
+            const value = parseInt(dictionaryFlags[key], 10);
+            if (!isNaN(value)) {
+                hardnessToIgnore = Math.max(hardnessToIgnore, value); // Use the maximum value if multiple exist
+            }
+        }
+    }
+
+    // If hardness is being ignored by the flags
+    if (hardnessToIgnore >= hardness) {
+        return; // Skip applying hardness reduction
+    } else if (hardnessToIgnore > 0) {
+        hardness -= hardnessToIgnore; // Reduce the hardness by the ignored amount
+    }
+
+    // Check if the weapon is made of adamantine
+    const materials = itemSource?.system?.material;
+    if (materials) {
+        if (materials.normal?.value?.toLowerCase() === 'adamantine' ||
+            materials.addon?.includes('adamantine')) {
+            isAdamantine = true;
+        }
+    }
+
+    if (isAdamantine && hardness <= 20) {
+        return; // Skip applying hardness reduction
+    }
+
+    let remainder = {
+        types: null,
+        index: null,
+        value: null
+    };
+
+
+    let remainingHardness = hardness;
+
+    for (let i = 0; i < damageSortObjects.length && remainingHardness > 0; i++) {
+        const object = damageSortObjects[i];
+        const index = object.index;
+        const damageTerm = attackDamage[index];
+
+        let damageValue = 0;
+
+        if (damageTerm.total !== undefined) {
+            // System-generated rolls
+            damageValue = damageTerm.total;
+        } else if (damageTerm.number !== undefined) {
+            // Manual rolls
+            damageValue = damageTerm.number;
+        } else {
+            continue; // Skip if no damage value found
+        }
+
+        const damageAfterHardness = Math.max(0, damageValue - remainingHardness);
+
+        const hardnessUsed = damageValue - damageAfterHardness;
+
+        remainingHardness -= hardnessUsed;
+
+        if (damageTerm.total !== undefined) {
+            attackDamage[index].total = damageAfterHardness;
+        } else if (damageTerm.number !== undefined) {
+            attackDamage[index].number = damageAfterHardness;
+        }
+    }
 };
 
 function abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg) {

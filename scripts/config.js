@@ -576,7 +576,7 @@ class EditDamageType extends FormApplication {
         super.activateListeners(html);
         this.selectedRadio = html.find('input[name="flag-type"]:checked');
         html.find(`input[name="flag-type"][value="${this.item.value.flags[MODULE.ID]?.type}"]`).prop('checked', true);
-        html.find(`select[name="flag-ability"]`).val(Object.keys(this.item.value.flags[MODULE.ID]?.abilities));
+        html.find(`select[name="flag-ability"]`).val(this.item.value.flags[MODULE.ID]?.abilities || '');
     
         html.find('button.file-picker').click(this._onFilePicker.bind(this));
         html.find('input[name="custom-category"]').on('focus', this._onCustomCategoryFocus.bind(this));
@@ -634,7 +634,7 @@ class EditDamageType extends FormApplication {
         const flagAbility = formData.get("flag-ability");
 
         let vsAbility = false;
-        let abilities = {};
+        let abilities = "";
         if (!name) {
             ui.notifications.error(game.i18n.localize("FORM.damageTypeForm.errors.nameRequired"));
             return;
@@ -659,7 +659,7 @@ class EditDamageType extends FormApplication {
 
         if (flagType && flagAbility) {
             vsAbility = true;
-            abilities[flagAbility] = flagAbility;
+            abilities = flagAbility;
         }
 
         const updatedFlags = {
