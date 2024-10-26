@@ -614,8 +614,8 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                     const currentDamageSortObject = damageSortObjects[j];
                     if (er.types.every(type => currentDamageSortObject.names.includes(type))) {
                         if (attackDamage[currentDamageSortObject.index].total) { // If made through the system
-                            if (attackDamage[currentDamageSortObject.index].total-dr.amount < 0) {
-                                remainder.value = attackDamage[currentDamageSortObject.index].total-dr.amount;
+                            if (attackDamage[currentDamageSortObject.index].total-er.amount < 0) {
+                                remainder.value = attackDamage[currentDamageSortObject.index].total-er.amount;
                                 remainder.index = currentDamageSortObject.index
                                 remainder.types = currentDamageSortObject.names
 
@@ -655,8 +655,8 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                         const currentDamageSortObject = damageSortObjects[j];
                         if (currentDamageSortObject.names.includes(erType)) {
                             if (attackDamage[currentDamageSortObject.index].total) {
-                                if (attackDamage[currentDamageSortObject.index].total-dr.amount < 0) {
-                                    remainder.value = attackDamage[currentDamageSortObject.index].total-dr.amount;
+                                if (attackDamage[currentDamageSortObject.index].total-er.amount < 0) {
+                                    remainder.value = attackDamage[currentDamageSortObject.index].total-er.amount;
                                     remainder.index = currentDamageSortObject.index
                                     remainder.types = currentDamageSortObject.names
 
