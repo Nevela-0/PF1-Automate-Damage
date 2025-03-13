@@ -10,7 +10,7 @@ Hooks.once("ready", () => {
 });
 
 function overrideApplyDamage () {
-    libWrapper.register('pf1-automate-damage', 'pf1.documents.item.ItemPF._onChatCardAction', interceptCardData, libWrapper.MIXED);
+    libWrapper.register('pf1-automate-damage', 'pf1.utils.chat.onButton', interceptCardData, libWrapper.MIXED);
 
     libWrapper.register('pf1-automate-damage', 'pf1.documents.actor.ActorPF.applyDamage', function (wrapped, value, config) {
         if (canvas.tokens.controlled.length && (!config.healing && value >= 0)) {
@@ -28,20 +28,22 @@ const targetInfo = {
     isCritical: false
 };
 
-function interceptCardData(wrapped, actionName, elementObject) {
-    if (actionName == "applyDamage" && elementObject.button) {
-        const chatMessage = elementObject.button.closest('.chat-message');
-        const chatAttack = elementObject.button.closest('.chat-attack');
+function interceptCardData(wrapped, message, elementObject) {
+    const actionName = elementObject.target?.dataset?.action;
+    const button = elementObject.target;
+    if (actionName == "applyDamage" && button) {
+        const chatMessage = button.closest('.chat-message');
+        const chatAttack = button.closest('.chat-attack');
 
         if (chatMessage) {
             targetInfo.id = chatMessage.getAttribute('data-message-id');
         };
-        targetInfo.buttonType = elementObject.button.dataset.tooltip || elementObject.button.innerText;
+        targetInfo.buttonType = button.dataset.tooltip || button.innerText;
         if (chatAttack) {
             targetInfo.attackIndex = chatAttack.getAttribute('data-index');
-            let damageElement = elementObject.button.closest('th[data-damage-type]');
+            let damageElement = button.closest('th[data-damage-type]');
             if (!damageElement) {
-                const buttonType = elementObject.button.getAttribute('data-type'); // 'critical' or 'normal'
+                const buttonType = button.getAttribute('data-type'); // 'critical' or 'normal'
                 if (buttonType) {
                     damageElement = chatAttack.querySelector(`th[data-damage-type="${buttonType}"]`);
                 };
@@ -53,7 +55,7 @@ function interceptCardData(wrapped, actionName, elementObject) {
             };
         };
     };
-    return wrapped(actionName, elementObject);
+    return wrapped(message, elementObject);
 };
 
 function customApplyDamage(originalApplyDamage, value, config) {
@@ -68,7 +70,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
         const damageVulnerabilities = traits.dv; // Damage Vulnerabilities
         const hardness = traits.hardness
         const messageId = targetInfo.id;
-        const message = game.messages.get(messageId)
+        const message = game.messages.get(messageId);
         let systemRolls = game.messages.get(messageId).systemRolls;
         if(Object.keys(systemRolls).length == 0 && systemRolls.constructor == Object && game.messages.get(messageId).rolls) {
             systemRolls = game.messages.get(messageId).rolls;
@@ -99,11 +101,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
                 damageReductionCalculation(attackDamage, damageReductions, damageTypes, damageSortObjects, itemSource, itemAction, message, hardness);
                 abilityDamageCalculation(damageImmunities, conditionImmunities, abilities, abilityDmg);
                 attackDamage.forEach(damage => {
-                    const damageTypes = damage.options?.damageType?.values || [];
-                    const customDamageTypeValue = damage.options?.damageType?.custom?.trim() || "";
-                    if(customDamageTypeValue.length>0) {
-                        damageTypes.push(customDamageTypeValue);
-                    };
+                    const damageTypes = damage.options?.damageType || [];
                     if(damageTypes.length < 1) {
                         damageTypes[0] = "untyped";
                     };
@@ -149,14 +147,14 @@ function customApplyDamage(originalApplyDamage, value, config) {
 function sortDamage(attackDamage, itemSource, message) {
     // Handle Actual Reduction from incoming damage
     const damageSortObjects = [];
-    const dataActionId = message.flags?.pf1?.metadata?.action;
+    const dataActionId = message.system?.action;
     const itemAction = [];
     const abilityDmg = [];
     
     const damageTypes = attackDamage.map((damage, index) => {
         if(damage.options.damageType) {
             const dmgNames = [];
-            const dmgTypes = damage.options.damageType.values;
+            const dmgTypes = damage.options.damageType;
             for (const [key, value] of pf1.registry.damageTypes.entries()) {
                 for (const type of dmgTypes) {
                     if (type === key) {
@@ -174,11 +172,6 @@ function sortDamage(attackDamage, itemSource, message) {
                         };
                     };
                 };
-            };
-            let customNames = damage.options.damageType.custom.trim(); // Make sure to declare customNames with let to reassign it later
-            if (customNames.length > 0) {
-                customNames = customNames.split(',').map(name => name.trim()); // Split by comma and trim whitespace
-                dmgNames.push(...customNames); // Add custom names to dmgNames array
             };
             const alignments = itemSource?.system?.alignments;
             const materials = itemSource?.system?.material;
@@ -405,6 +398,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             };
         });
     };
+    let appliedDR = false;
     totalDR.forEach(dr => {
         const allWeaponDamageTypes = [...AutomateDamageModule?.automateDamageConfig?.weaponDamageTypes,...AutomateDamageModule?.automateDamageConfig?.additionalPhysicalDamageTypes].flat(2);
 
@@ -418,7 +412,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             for(let i = 0; i < dr.types.length ;i++) {
                 const drType = dr.types[i];
                 const hasDamageType = damageTypes.includes(drType)
-                if(!hasDamageType && dr.amount == highestDR) {
+                if(!hasDamageType && dr.amount == highestDR && !appliedDR) {
                     let found = false;
                     for(let i=0;i<damageSortObjects.length;i++) {
                         const currentDamageSortObject = damageSortObjects[i];
@@ -435,10 +429,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                                         for (let index = 0; index < attackDamage.length; index++) {
                                             const damageRoll = attackDamage[index];
                                             if (index !== currentDamageSortObject.index) {
-                                                const damageValues = damageRoll.options.damageType.values;
-                                                const customDamageType = damageRoll.options.damageType.custom;
-
-                                                const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                                const allDamageTypes = damageRoll.options.damageType;
                                             
                                                 const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
                                             
@@ -461,6 +452,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                         };
                         if(found) break;
                     };
+                    appliedDR = true;
                     break;
                 };
             };
@@ -472,7 +464,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                 const typeIndex = damageTypes.includes(drType)
                 if(!typeIndex) {
                     passes++
-                    if((passes == 2||dr.types.length==1) && dr.amount == highestDR) {
+                    if((passes == 2||dr.types.length==1) && dr.amount == highestDR && !appliedDR) {
                         let found = false;
                         for(let i=0;i<damageSortObjects.length;i++) {
                             const currentDamageSortObject = damageSortObjects[i];
@@ -489,10 +481,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                                             for (let index = 0; index < attackDamage.length; index++) {
                                                 const damageRoll = attackDamage[index];
                                                 if (index !== currentDamageSortObject.index) {
-                                                    const damageValues = damageRoll.options.damageType.values;
-                                                    const customDamageType = damageRoll.options.damageType.custom;
-    
-                                                    const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                                    const allDamageTypes = damageRoll.options.damageType;
                                                 
                                                     const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
                                                 
@@ -513,6 +502,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                                     };
                                 };
                             };
+                            appliedDR = true;
                             if(found) break;
                         };
                     };
@@ -527,7 +517,7 @@ function damageImmunityCalculation(damageImmunities, attackDamage, damageSortObj
 
     damageSortObjects.forEach(object => {
         object.names.forEach(type => {
-            if(damageImmunities.value.includes(type) || diCustom.includes(type)) {
+            if(damageImmunities.standard.has(type) || diCustom.has(type)) {
                 object.amount = 0;
                 if (attackDamage[object.index].total) { // If made through the system
                     attackDamage[object.index].total = object.amount
@@ -544,7 +534,7 @@ function damageVulnerabilityCalculation(damageVulnerabilities, attackDamage, dam
 
     damageSortObjects.forEach(object => {
         object.names.forEach(type=>{
-            if (damageVulnerabilities.value.includes(type) || dvCustom.includes(type)) {
+            if (damageVulnerabilities.standard.has(type) || dvCustom.has(type)) {
                 object.amount *= 1.5;
                 object.amount = Math.floor(object.amount);
                 if (attackDamage[object.index].total) { // If made through the system
@@ -622,10 +612,7 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                                 for (let index = 0; index < attackDamage.length; index++) {
                                     const damageRoll = attackDamage[index];
                                     if (index !== currentDamageSortObject.index) {
-                                        const damageValues = damageRoll.options.damageType.values;
-                                        const customDamageType = damageRoll.options.damageType.custom;
-
-                                        const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                        const allDamageTypes = damageRoll.options.damageType;
                                     
                                         const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
                                     
@@ -663,10 +650,7 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                                     for (let index = 0; index < attackDamage.length; index++) {
                                         const damageRoll = attackDamage[index];
                                         if (index !== currentDamageSortObject.index) {
-                                            const damageValues = damageRoll.options.damageType.values;
-                                            const customDamageType = damageRoll.options.damageType.custom;
-
-                                            const allDamageTypes = customDamageType ? [...damageValues, customDamageType] : damageValues;
+                                            const allDamageTypes = damageRoll.options.damageType;
                                         
                                             const exactMatch = remainder.types.every(type => allDamageTypes.includes(type));
                                         
@@ -830,7 +814,7 @@ function abilityDamageCalculation(damageImmunities, conditionImmunities, abiliti
         if (amount <= 0) continue; // Skip if there's no damage amount
 
         let isImmune = false;
-        if (damageImmunities.value.find(v => v.toLowerCase() === type.toLowerCase())) {
+        if (damageImmunities.standard.find(v => v.toLowerCase() === type.toLowerCase())) {
             isImmune = true;
             break;
         }

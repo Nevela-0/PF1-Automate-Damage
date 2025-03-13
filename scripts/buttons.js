@@ -81,6 +81,7 @@ function applyHealing(damageInfo, multiplier) {
     let healDamage = 0;
 
     damageInfo.forEach(({ damageType, totalDamage }) => {
+        let abilityHealingApplied = false;
         damageType.forEach(dt => {
             for (const [key, value] of pf1.registry.damageTypes.entries()) {
                 if (dt === value.name) {
@@ -113,6 +114,7 @@ function applyHealing(damageInfo, multiplier) {
                                         tokenAbilities[dmg.vs].userPenalty = Math.max(tokenAbilities[dmg.vs].userPenalty + dmg.amount, 0);
                                         break;
                                 }
+                                abilityHealingApplied = true;
                             }
 
                             let updates = {};
@@ -127,7 +129,9 @@ function applyHealing(damageInfo, multiplier) {
                 }
             }
         });
-        healDamage += totalDamage;
+        if (!abilityHealingApplied) {
+            healDamage += totalDamage;
+        }
     });
     if (healDamage > 0) {
         healDamage = healDamage * -1 * multiplier;

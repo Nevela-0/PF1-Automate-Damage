@@ -76,7 +76,7 @@ function registerSettings() {
 
 function syncWeaponDamageTypes() {
     const damageTypePriority = JSON.parse(game.settings.get(MODULE.ID, "damageTypePriority"));
-    const materialTypes = pf1.registry.materialTypes;
+    const materialTypes = pf1.registry.materials;
     const alignments = pf1.config.damageResistances;
 
     const weaponDamageTypes = damageTypePriority.map(priorityLevel => {
@@ -310,7 +310,7 @@ class DamageTypeFormApplication extends FormApplication {
     }
   
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "damage-type-form",
             title: game.i18n.localize("FORM.damageTypeForm.title"),
             template: "modules/pf1-automate-damage/templates/custom-damage-type-form.html",
@@ -547,7 +547,7 @@ class EditDamageType extends FormApplication {
     }
 
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "edit-damage-type",
             title: game.i18n.localize("FORM.damageTypeForm.editTitle"),
             template: "modules/pf1-automate-damage/templates/damage-type-editor.html",
@@ -698,7 +698,7 @@ class EditDamageType extends FormApplication {
 
 class DamagePriorityForm extends FormApplication {
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "damage-priority-form",
             title: game.i18n.localize("FORM.damagePriorityForm.title"),
             template: "modules/pf1-automate-damage/templates/damage-priority-form.html",
@@ -879,7 +879,7 @@ class DRTypeEditor extends FormApplication {
     }
 
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "dr-type-editor",
             title: game.i18n.localize("FORM.drTypeEditor.title"),
             template: "modules/pf1-automate-damage/templates/dr-type-editor.html",
@@ -991,7 +991,7 @@ class DRTypeEditor extends FormApplication {
 
 class TranslationForm extends FormApplication {
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "translation-form",
             title: game.i18n.localize("FORM.translationForm.title"),
             template: "modules/pf1-automate-damage/templates/translation-form.html",
