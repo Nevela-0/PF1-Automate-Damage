@@ -1,0 +1,151 @@
+<div class="global-damage-settings">
+    <form>
+        <div class="form-header">
+            <h2>{{localize "PF1.AutomateDamage.GlobalSettings.Title"}}: {{itemName}}</h2>
+            <p class="notes">{{localize "PF1.AutomateDamage.GlobalSettings.Description"}}</p>
+        </div>
+
+        <div class="form-group">
+            <div class="section-title-container">
+                <div class="section-title">{{localize "PF1.AutomateDamage.GlobalSettings.HardnessSection"}}</div>
+            </div>
+            
+            <div class="option-section">
+                <div class="settings-row">
+                    <label class="checkbox">
+                        <input type="checkbox" name="bypassHardness" {{checked bypassHardness}}>
+                        {{localize "PF1.AutomateDamage.Settings.BypassHardness"}}
+                    </label>
+                    <p class="hint">{{localize "PF1.AutomateDamage.Settings.BypassHardnessHint"}}</p>
+                </div>
+                
+                <div class="settings-row">
+                    <label class="checkbox">
+                        <input type="checkbox" name="ignoreHardness" class="toggle-input" data-target="ignore-hardness-value" {{checked ignoreHardness}}>
+                        {{localize "PF1.AutomateDamage.Settings.IgnoreHardness"}}
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="ignoreHardnessValue" class="ignore-hardness-value {{#unless ignoreHardness}}hidden{{/unless}}" value="{{ignoreHardnessValue}}" min="0" step="1">
+                    </div>
+                    <p class="hint">{{localize "PF1.AutomateDamage.Settings.IgnoreHardnessHint"}}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="section-title-container">
+                <div class="section-title">{{localize "PF1.AutomateDamage.GlobalSettings.BypassSection"}}</div>
+            </div>
+            
+            <div class="option-section three-column-layout">
+                <div id="bypass-immunity-list-container" class="bypass-immunity-wrapper multiselect-container">
+                    <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassImmunity"}}</div>
+                    <div class="multiselect-tags-container">
+                        {{#if bypassImmunityList.length}}
+                            {{#each damageTypes as |damageType|}}
+                                {{#if (includes ../bypassImmunityList damageType.id)}}
+                                <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                    <span>{{damageType.label}}</span>
+                                    <i class="fas fa-times remove-tag"></i>
+                                </div>
+                                {{/if}}
+                            {{/each}}
+                        {{else}}
+                            <span class="multiselect-placeholder">None selected</span>
+                        {{/if}}
+                    </div>
+                    <div class="multiselect-dropdown-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="multiselect-search">
+                            <input type="text" class="multiselect-search-input" placeholder="Search...">
+                        </div>
+                        <div class="multiselect-list">
+                            {{#each damageTypes}}
+                            <label class="multiselect-option {{#if (includes ../bypassImmunityList this.id)}}selected{{/if}}">
+                                <input type="checkbox" name="bypassImmunityList" value="{{this.id}}" {{#if (includes ../bypassImmunityList this.id)}}checked{{/if}}>
+                                <span>{{this.label}}</span>
+                            </label>
+                            {{/each}}
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="bypass-resistance-list-container" class="bypass-resistance-wrapper multiselect-container">
+                    <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassResistance"}}</div>
+                    <div class="multiselect-tags-container">
+                        {{#if bypassResistanceList.length}}
+                            {{#each damageTypes as |damageType|}}
+                                {{#if (includes ../bypassResistanceList damageType.id)}}
+                                <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                    <span>{{damageType.label}}</span>
+                                    <i class="fas fa-times remove-tag"></i>
+                                </div>
+                                {{/if}}
+                            {{/each}}
+                        {{else}}
+                            <span class="multiselect-placeholder">None selected</span>
+                        {{/if}}
+                    </div>
+                    <div class="multiselect-dropdown-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="multiselect-search">
+                            <input type="text" class="multiselect-search-input" placeholder="Search...">
+                        </div>
+                        <div class="multiselect-list">
+                            {{#each damageTypes}}
+                            <label class="multiselect-option {{#if (includes ../bypassResistanceList this.id)}}selected{{/if}}">
+                                <input type="checkbox" name="bypassResistanceList" value="{{this.id}}" {{#if (includes ../bypassResistanceList this.id)}}checked{{/if}}>
+                                <span>{{this.label}}</span>
+                            </label>
+                            {{/each}}
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="bypass-dr-list-container" class="bypass-dr-wrapper multiselect-container">
+                    <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassDR"}}</div>
+                    <div class="multiselect-tags-container">
+                        {{#if bypassDRList.length}}
+                            {{#each damageTypes as |damageType|}}
+                                {{#if (includes ../bypassDRList damageType.id)}}
+                                <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                    <span>{{damageType.label}}</span>
+                                    <i class="fas fa-times remove-tag"></i>
+                                </div>
+                                {{/if}}
+                            {{/each}}
+                        {{else}}
+                            <span class="multiselect-placeholder">None selected</span>
+                        {{/if}}
+                    </div>
+                    <div class="multiselect-dropdown-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="multiselect-search">
+                            <input type="text" class="multiselect-search-input" placeholder="Search...">
+                        </div>
+                        <div class="multiselect-list">
+                            {{#each damageTypes}}
+                            <label class="multiselect-option {{#if (includes ../bypassDRList this.id)}}selected{{/if}}">
+                                <input type="checkbox" name="bypassDRList" value="{{this.id}}" {{#if (includes ../bypassDRList this.id)}}checked{{/if}}>
+                                <span>{{this.label}}</span>
+                            </label>
+                            {{/each}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <button type="submit" class="submit-button">
+                <i class="fa fa-save"></i> {{localize "PF1.AutomateDamage.Save"}}
+            </button>
+        </div>
+    </form>
+</div> 

@@ -9,6 +9,30 @@ function registerSettings() {
     Handlebars.registerHelper('colorStyle', function(color) {
         return new Handlebars.SafeString(`style="color: ${color};"`);
     });
+    Handlebars.registerHelper('includes', function(array, value) {
+        if (!array) return false;
+        return array.includes(value);
+    });
+
+    const stylesheets = [
+        'templates/css/damage-settings-form.css'
+    ];
+    stylesheets.forEach(stylesheet => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = `modules/${MODULE.ID}/${stylesheet}`;
+        document.head.appendChild(link);
+    });
+
+    game.settings.register(MODULE.ID, "massiveDamage", {
+        name: game.i18n.localize("SETTINGS.massiveDamage.name"),
+        hint: game.i18n.localize("SETTINGS.massiveDamage.hint"),
+        default: false,
+        scope: "world",
+        type: Boolean,
+        config: true
+    });
 
     game.settings.register(MODULE.ID, "damageTypePriority", {
         name: game.i18n.localize("SETTINGS.damageTypePriority.name"),
@@ -215,12 +239,10 @@ function handleRegistryHook(registry) {
     customDamageTypes.forEach(damageType => {
         const { key, value } = damageType;
 
-        // Register the custom category if it's not "physical," "energy," or "misc"
         if (!["physical", "energy", "misc"].includes(value.category.toLowerCase().trim())) {
             registry.constructor.CATEGORIES.push(value.category);
         }
 
-        // Register the damage type
         registry.register(MODULE.ID, key, value);
     });
 }
@@ -275,8 +297,6 @@ function unregisterDamageTypes(damageTypesToUnregister) {
         const { key } = damageType;
         registry.unregister(MODULE.ID, key);
     });
-
-    console.log("Unregistered damage types:", damageTypesToUnregister.map(dt => dt.key));
 }
 
 function reRegisterDamageTypes(damageTypesToReRegister) {
@@ -286,8 +306,6 @@ function reRegisterDamageTypes(damageTypesToReRegister) {
         const { key, value } = damageType;
         registry.register(MODULE.ID, key, value);
     });
-
-    console.log("Re-registered damage types:", damageTypesToReRegister.map(dt => dt.key));
 }
 export const AutomateDamageModule = {
     MODULE,
@@ -577,7 +595,6 @@ class EditDamageType extends FormApplication {
         this.selectedRadio = html.find('input[name="flag-type"]:checked');
         html.find(`input[name="flag-type"][value="${this.item.value.flags[MODULE.ID]?.type}"]`).prop('checked', true);
         html.find(`select[name="flag-ability"]`).val(this.item.value.flags[MODULE.ID]?.abilities || '');
-    
         html.find('button.file-picker').click(this._onFilePicker.bind(this));
         html.find('input[name="custom-category"]').on('focus', this._onCustomCategoryFocus.bind(this));
         html.find('input[name="flag-type"]').on('click', this._onRadioClick.bind(this));

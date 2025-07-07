@@ -1,0 +1,470 @@
+<style>
+    .action-damage-settings .debug-info {
+        display: none;
+    }
+    
+    /* Debug style - enable to highlight inherited tags */
+    /*
+    .action-damage-settings .multiselect-tag.inherited-tag {
+        border: 2px dashed red !important;
+    }
+    */
+    
+    .action-damage-settings .multiselect-tag.inherited-tag span,
+    .action-damage-settings .multiselect-option.inherited-item span {
+        font-style: italic;
+        color: #777;
+    }
+    
+    .action-damage-settings .multiselect-option.inherited-item::after {
+        content: "(Inherited)";
+        font-size: 0.8em;
+        color: #777;
+        font-style: italic;
+        margin-left: 5px;
+    }
+</style>
+
+<div class="action-damage-settings">
+    <form>
+        <div class="form-header">
+            <h2>{{localize "PF1.AutomateDamage.ActionSettings.Title"}}: {{actionName}}</h2>
+            <p class="notes">{{localize "PF1.AutomateDamage.ActionSettings.Description"}}</p>
+        </div>
+
+        <!-- Hidden fields to track inheritance status -->
+        <input type="hidden" name="immunity.inherit" value="{{action.immunity.inherit}}">
+        <input type="hidden" name="resistance.inherit" value="{{action.resistance.inherit}}">
+        <input type="hidden" name="damageReduction.inherit" value="{{action.damageReduction.inherit}}">
+        
+        <!-- Hidden containers for checkbox values -->
+        <div class="immunity-hidden-inputs" style="display: none;"></div>
+        <div class="resistance-hidden-inputs" style="display: none;"></div>
+        <div class="damageReduction-hidden-inputs" style="display: none;"></div>
+
+        <div class="form-group">
+            <div class="section-title-container">
+                <div class="section-title">{{localize "PF1.AutomateDamage.GlobalSettings.HardnessSection"}}</div>
+            </div>
+            
+            <div class="option-section">
+                <div class="settings-row">
+                    <label class="checkbox">
+                        <div class="tri-state-checkbox" data-name="hardness.bypass" data-state="{{#if action.hardness.bypass.inherit}}inherit{{else}}{{#if action.hardness.bypass.enabled}}true{{else}}false{{/if}}{{/if}}">
+                            <input type="hidden" name="hardness.bypass.inherit" value="{{#if action.hardness.bypass.inherit}}true{{else}}false{{/if}}">
+                            <input type="hidden" name="hardness.bypass.enabled" value="{{#if action.hardness.bypass.enabled}}true{{else}}false{{/if}}">
+                            <span class="tri-state-indicator"></span>
+                        </div>
+                        {{localize "PF1.AutomateDamage.Settings.BypassHardness"}}
+                    </label>
+                    <p class="hint">{{localize "PF1.AutomateDamage.Settings.BypassHardnessHint"}}</p>
+                </div>
+                
+                <div class="settings-row">
+                    <label class="checkbox">
+                        <div class="tri-state-checkbox" data-name="hardness.ignore.enabled" data-state="{{#if action.hardness.ignore.inherit}}inherit{{else}}{{#if action.hardness.ignore.enabled}}true{{else}}false{{/if}}{{/if}}" data-target="ignore-hardness-value">
+                            <input type="hidden" name="hardness.ignore.inherit" value="{{#if action.hardness.ignore.inherit}}true{{else}}false{{/if}}">
+                            <input type="hidden" name="hardness.ignore.enabled" value="{{#if action.hardness.ignore.enabled}}true{{else}}false{{/if}}">
+                            <span class="tri-state-indicator"></span>
+                        </div>
+                        {{localize "PF1.AutomateDamage.Settings.IgnoreHardness"}}
+                    </label>
+                    <div class="input-group">
+                        <input type="number" name="hardness.ignore.value" class="ignore-hardness-value {{#if action.hardness.ignore.inherit}}{{else}}{{#if (eq action.hardness.ignore.enabled false)}}hidden{{/if}}{{/if}}" value="{{action.hardness.ignore.value}}" min="0" step="1" {{#if action.hardness.ignore.inherit}}disabled{{/if}}>
+                        {{#if action.hardness.ignore.inherit}}
+                          <span class="inherited-label" style="color: #888; font-size: 0.9em; margin-left: 6px;">(Inherited)</span>
+                        {{/if}}
+                    </div>
+                    <p class="hint">{{localize "PF1.AutomateDamage.Settings.IgnoreHardnessHint"}}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="section-title-container">
+                <div class="section-title">{{localize "PF1.AutomateDamage.GlobalSettings.BypassSection"}}</div>
+            </div>
+            
+            <div class="option-section three-column-layout">
+                <div id="bypass-immunity-list-container" class="bypass-immunity-wrapper multiselect-container">
+                    <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassImmunity"}}</div>
+                    <div class="multiselect-tags-container" data-inherited="{{#if action.immunity.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
+                        {{#if action.immunity.bypass.isInheritedTypes}}
+                            {{#if action.immunity.bypass.types.length}}
+                                {{#each damageTypes as |damageType|}}
+                                    {{#if (includes ../action.immunity.bypass.types damageType.id)}}
+                                    <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
+                                        <span>{{damageType.label}} (Inherited)</span>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
+                            {{/if}}
+                        {{else}}
+                            {{#if action.immunity.bypass.types.length}}
+                                {{#each damageTypes as |damageType|}}
+                                    {{#if (includes ../action.immunity.bypass.types damageType.id)}}
+                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                        <span>{{damageType.label}}</span>
+                                        <i class="fas fa-times remove-tag"></i>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder">None Selected</span>
+                            {{/if}}
+                        {{/if}}
+                    </div>
+                    <div class="multiselect-dropdown-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="multiselect-search">
+                            <input type="text" class="multiselect-search-input" placeholder="Search...">
+                        </div>
+                        <div class="multiselect-list">
+                            {{#each damageTypes}}
+                            <label class="multiselect-option {{#if (and ../action.immunity.bypass.isInheritedTypes (includes ../action.immunity.bypass.types this.id))}}inherited-item{{/if}}">
+                                <input type="checkbox" class="damage-type-checkbox" data-category="immunity" data-scope="action" data-value="{{this.id}}" {{#if (includes ../action.immunity.bypass.types this.id)}}checked class="is-selected"{{/if}}>
+                                <span>{{this.label}}</span>
+                            </label>
+                            {{/each}}
+                            <!-- Hidden inputs for selected values will be added by JavaScript -->
+                            <div class="immunity-hidden-inputs"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="bypass-resistance-list-container" class="bypass-resistance-wrapper multiselect-container">
+                    <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassResistance"}}</div>
+                    <div class="multiselect-tags-container" data-inherited="{{#if action.resistance.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
+                        {{#if action.resistance.bypass.isInheritedTypes}}
+                            {{#if action.resistance.bypass.types.length}}
+                                {{#each damageTypes as |damageType|}}
+                                    {{#if (includes ../action.resistance.bypass.types damageType.id)}}
+                                    <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
+                                        <span>{{damageType.label}} (Inherited)</span>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
+                            {{/if}}
+                        {{else}}
+                            {{#if action.resistance.bypass.types.length}}
+                                {{#each damageTypes as |damageType|}}
+                                    {{#if (includes ../action.resistance.bypass.types damageType.id)}}
+                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                        <span>{{damageType.label}}</span>
+                                        <i class="fas fa-times remove-tag"></i>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder">None Selected</span>
+                            {{/if}}
+                        {{/if}}
+                    </div>
+                    <div class="multiselect-dropdown-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="multiselect-search">
+                            <input type="text" class="multiselect-search-input" placeholder="Search...">
+                        </div>
+                        <div class="multiselect-list">
+                            {{#each damageTypes}}
+                            <label class="multiselect-option {{#if (and ../action.resistance.bypass.isInheritedTypes (includes ../action.resistance.bypass.types this.id))}}inherited-item{{/if}}">
+                                <input type="checkbox" class="damage-type-checkbox" data-category="resistance" data-scope="action" data-value="{{this.id}}" {{#if (includes ../action.resistance.bypass.types this.id)}}checked class="is-selected"{{/if}}>
+                                <span>{{this.label}}</span>
+                            </label>
+                            {{/each}}
+                            <!-- Hidden inputs for selected values will be added by JavaScript -->
+                            <div class="resistance-hidden-inputs"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="bypass-dr-list-container" class="bypass-dr-wrapper multiselect-container">
+                    <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassDR"}}</div>
+                    <div class="multiselect-tags-container" data-inherited="{{#if action.damageReduction.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
+                        {{#if action.damageReduction.bypass.isInheritedTypes}}
+                            {{#if action.damageReduction.bypass.types.length}}
+                                {{#each damageTypes as |damageType|}}
+                                    {{#if (includes ../action.damageReduction.bypass.types damageType.id)}}
+                                    <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
+                                        <span>{{damageType.label}} (Inherited)</span>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
+                            {{/if}}
+                        {{else}}
+                            {{#if action.damageReduction.bypass.types.length}}
+                                {{#each damageTypes as |damageType|}}
+                                    {{#if (includes ../action.damageReduction.bypass.types damageType.id)}}
+                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                        <span>{{damageType.label}}</span>
+                                        <i class="fas fa-times remove-tag"></i>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder">None Selected</span>
+                            {{/if}}
+                        {{/if}}
+                    </div>
+                    <div class="multiselect-dropdown-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="multiselect-dropdown">
+                        <div class="multiselect-search">
+                            <input type="text" class="multiselect-search-input" placeholder="Search...">
+                        </div>
+                        <div class="multiselect-list">
+                            {{#each damageTypes}}
+                            <label class="multiselect-option {{#if (and ../action.damageReduction.bypass.isInheritedTypes (includes ../action.damageReduction.bypass.types this.id))}}inherited-item{{/if}}">
+                                <input type="checkbox" class="damage-type-checkbox" data-category="damageReduction" data-scope="action" data-value="{{this.id}}" {{#if (includes ../action.damageReduction.bypass.types this.id)}}checked class="is-selected"{{/if}}>
+                                <span>{{this.label}}</span>
+                            </label>
+                            {{/each}}
+                            <!-- Hidden inputs for selected values will be added by JavaScript -->
+                            <div class="damageReduction-hidden-inputs"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{#if attacks.length}}
+        <div class="form-group">
+            <div class="section-title-container">
+                <div class="section-title attack-settings-toggle" title="{{localize 'PF1.AutomateDamage.ActionSettings.ToggleAttackSettings'}}">
+                    <i class="fas {{#if (hasNoActiveAttackSettings attacks)}}fa-caret-right{{else}}fa-caret-down{{/if}}"></i> {{localize "PF1.AutomateDamage.ActionSettings.AttacksSection"}} ({{attacks.length}})
+                </div>
+            </div>
+            
+            <div class="attack-settings-content {{#if (hasNoActiveAttackSettings attacks)}}collapsed{{/if}}">
+                {{#each attacks}}
+                <div class="attack-section" data-attack-key="{{this.key}}">
+                    <div class="attack-header">{{this.name}}</div>
+                    
+                    <!-- Hidden fields to track attack inheritance status -->
+                    <input type="hidden" name="attacks.{{this.key}}.immunity.inherit" value="{{this.immunity.inherit}}">
+                    <input type="hidden" name="attacks.{{this.key}}.resistance.inherit" value="{{this.resistance.inherit}}">
+                    <input type="hidden" name="attacks.{{this.key}}.damageReduction.inherit" value="{{this.damageReduction.inherit}}">
+                    
+                    <!-- Hidden containers for attack checkbox values -->
+                    <div class="immunity-hidden-inputs-{{@index}}" style="display: none;"></div>
+                    <div class="resistance-hidden-inputs-{{@index}}" style="display: none;"></div>
+                    <div class="damageReduction-hidden-inputs-{{@index}}" style="display: none;"></div>
+                    
+                    <div class="settings-row">
+                        <label class="checkbox">
+                            <div class="tri-state-checkbox" data-name="attacks.{{this.key}}.hardness.bypass" data-state="{{#if this.hardness.bypass.inherit}}inherit{{else}}{{#if this.hardness.bypass.enabled}}true{{else}}false{{/if}}{{/if}}">
+                                <input type="hidden" name="attacks.{{this.key}}.hardness.bypass.inherit" value="{{#if this.hardness.bypass.inherit}}true{{else}}false{{/if}}">
+                                <input type="hidden" name="attacks.{{this.key}}.hardness.bypass.enabled" value="{{#if this.hardness.bypass.enabled}}true{{else}}false{{/if}}">
+                                <span class="tri-state-indicator"></span>
+                            </div>
+                            {{localize "PF1.AutomateDamage.Settings.BypassHardness"}}
+                        </label>
+                    </div>
+                    
+                    <div class="settings-row">
+                        <label class="checkbox">
+                            <div class="tri-state-checkbox" data-name="attacks.{{this.key}}.hardness.ignore.enabled" data-state="{{#if this.hardness.ignore.inherit}}inherit{{else}}{{#if this.hardness.ignore.enabled}}true{{else}}false{{/if}}{{/if}}" data-target="ignore-hardness-value-{{@index}}">
+                                <input type="hidden" name="attacks.{{this.key}}.hardness.ignore.inherit" value="{{#if this.hardness.ignore.inherit}}true{{else}}false{{/if}}">
+                                <input type="hidden" name="attacks.{{this.key}}.hardness.ignore.enabled" value="{{#if this.hardness.ignore.enabled}}true{{else}}false{{/if}}">
+                                <span class="tri-state-indicator"></span>
+                            </div>
+                            {{localize "PF1.AutomateDamage.Settings.IgnoreHardness"}}
+                        </label>
+                        <div class="input-group">
+                            <input type="number" name="attacks.{{this.key}}.hardness.ignore.value" class="ignore-hardness-value-{{@index}} {{#if this.hardness.ignore.inherit}}{{else}}{{#if (eq this.hardness.ignore.enabled false)}}hidden{{/if}}{{/if}}" value="{{this.hardness.ignore.value}}" min="0" step="1" {{#if this.hardness.ignore.inherit}}disabled{{/if}}>
+                            {{#if this.hardness.ignore.inherit}}
+                              <span class="inherited-label" style="color: #888; font-size: 0.9em; margin-left: 6px;">(Inherited)</span>
+                            {{/if}}
+                        </div>
+                    </div>
+                    
+                    <div class="option-section three-column-layout">
+                        <div id="bypass-immunity-list-container-{{@index}}" class="bypass-immunity-wrapper multiselect-container" data-category="immunity">
+                            <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassImmunity"}}</div>
+                            <div class="multiselect-tags-container" data-inherited="{{#if this.immunity.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
+                                {{#if this.immunity.bypass.isInheritedTypes}}
+                                    {{#if this.immunity.bypass.types.length}}
+                                        {{#each ../damageTypes as |damageType|}}
+                                            {{#if (includes ../this.immunity.bypass.types damageType.id)}}
+                                            <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
+                                                <span>{{damageType.label}} (Inherited)</span>
+                                            </div>
+                                            {{/if}}
+                                        {{/each}}
+                                    {{else}}
+                                        <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
+                                    {{/if}}
+                                {{else}}
+                                    {{#if this.immunity.bypass.types.length}}
+                                        {{#each ../damageTypes as |damageType|}}
+                                            {{#if (includes ../this.immunity.bypass.types damageType.id)}}
+                                            <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                                <span>{{damageType.label}}</span>
+                                                <i class="fas fa-times remove-tag"></i>
+                                            </div>
+                                            {{/if}}
+                                        {{/each}}
+                                    {{else}}
+                                        <span class="multiselect-placeholder">None Selected</span>
+                                    {{/if}}
+                                {{/if}}
+                            </div>
+                            <div class="multiselect-dropdown-toggle">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="multiselect-dropdown">
+                                <div class="multiselect-search">
+                                    <input type="text" class="multiselect-search-input" placeholder="Search...">
+                                </div>
+                                <div class="multiselect-list">
+                                    {{#each ../damageTypes}}
+                                    <label class="multiselect-option {{#if (and ../../this.immunity.bypass.isInheritedTypes (includes ../../action.immunity.bypass.types this.id))}}inherited-item{{/if}}">
+                                        <input type="checkbox" class="damage-type-checkbox" data-category="immunity" data-attack-key="{{../key}}" data-value="{{this.id}}"
+                                            {{#if ../../this.immunity.bypass.isInheritedTypes}}
+                                                {{#if (includes ../../action.immunity.bypass.types this.id)}}checked class="is-selected"{{/if}}
+                                            {{else}}
+                                                {{#if (includes ../this.immunity.bypass.types this.id)}}checked class="is-selected"{{/if}}
+                                            {{/if}}>
+                                        <span>{{this.label}}</span>
+                                    </label>
+                                    {{/each}}
+                                    <!-- Hidden inputs for selected values will be added by JavaScript -->
+                                    <div class="immunity-hidden-inputs-{{@index}}"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="bypass-resistance-list-container-{{@index}}" class="bypass-resistance-wrapper multiselect-container" data-category="resistance">
+                            <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassResistance"}}</div>
+                            <div class="multiselect-tags-container" data-inherited="{{#if this.resistance.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
+                                {{#if this.resistance.bypass.isInheritedTypes}}
+                                    {{#if this.resistance.bypass.types.length}}
+                                        {{#each ../damageTypes as |damageType|}}
+                                            {{#if (includes ../this.resistance.bypass.types damageType.id)}}
+                                            <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
+                                                <span>{{damageType.label}} (Inherited)</span>
+                                            </div>
+                                            {{/if}}
+                                        {{/each}}
+                                    {{else}}
+                                        <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
+                                    {{/if}}
+                                {{else}}
+                                    {{#if this.resistance.bypass.types.length}}
+                                        {{#each ../damageTypes as |damageType|}}
+                                            {{#if (includes ../this.resistance.bypass.types damageType.id)}}
+                                            <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                                <span>{{damageType.label}}</span>
+                                                <i class="fas fa-times remove-tag"></i>
+                                            </div>
+                                            {{/if}}
+                                        {{/each}}
+                                    {{else}}
+                                        <span class="multiselect-placeholder">None Selected</span>
+                                    {{/if}}
+                                {{/if}}
+                            </div>
+                            <div class="multiselect-dropdown-toggle">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="multiselect-dropdown">
+                                <div class="multiselect-search">
+                                    <input type="text" class="multiselect-search-input" placeholder="Search...">
+                                </div>
+                                <div class="multiselect-list">
+                                    {{#each ../damageTypes}}
+                                    <label class="multiselect-option {{#if (and ../../this.resistance.bypass.isInheritedTypes (includes ../../action.resistance.bypass.types this.id))}}inherited-item{{/if}}">
+                                        <input type="checkbox" class="damage-type-checkbox" data-category="resistance" data-attack-key="{{../key}}" data-value="{{this.id}}"
+                                            {{#if ../../this.resistance.bypass.isInheritedTypes}}
+                                                {{#if (includes ../../action.resistance.bypass.types this.id)}}checked class="is-selected"{{/if}}
+                                            {{else}}
+                                                {{#if (includes ../this.resistance.bypass.types this.id)}}checked class="is-selected"{{/if}}
+                                            {{/if}}>
+                                        <span>{{this.label}}</span>
+                                    </label>
+                                    {{/each}}
+                                    <!-- Hidden inputs for selected values will be added by JavaScript -->
+                                    <div class="resistance-hidden-inputs-{{@index}}"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="bypass-dr-list-container-{{@index}}" class="bypass-dr-wrapper multiselect-container" data-category="damageReduction">
+                            <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassDR"}}</div>
+                            <div class="multiselect-tags-container" data-inherited="{{#if this.damageReduction.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
+                                {{#if this.damageReduction.bypass.isInheritedTypes}}
+                                    {{#if this.damageReduction.bypass.types.length}}
+                                        {{#each ../damageTypes as |damageType|}}
+                                            {{#if (includes ../this.damageReduction.bypass.types damageType.id)}}
+                                            <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
+                                                <span>{{damageType.label}} (Inherited)</span>
+                                            </div>
+                                            {{/if}}
+                                        {{/each}}
+                                    {{else}}
+                                        <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
+                                    {{/if}}
+                                {{else}}
+                                    {{#if this.damageReduction.bypass.types.length}}
+                                        {{#each ../damageTypes as |damageType|}}
+                                            {{#if (includes ../this.damageReduction.bypass.types damageType.id)}}
+                                            <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                                <span>{{damageType.label}}</span>
+                                                <i class="fas fa-times remove-tag"></i>
+                                            </div>
+                                            {{/if}}
+                                        {{/each}}
+                                    {{else}}
+                                        <span class="multiselect-placeholder">None Selected</span>
+                                    {{/if}}
+                                {{/if}}
+                            </div>
+                            <div class="multiselect-dropdown-toggle">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="multiselect-dropdown">
+                                <div class="multiselect-search">
+                                    <input type="text" class="multiselect-search-input" placeholder="Search...">
+                                </div>
+                                <div class="multiselect-list">
+                                    {{#each ../damageTypes}}
+                                    <label class="multiselect-option {{#if (and ../../this.damageReduction.bypass.isInheritedTypes (includes ../../action.damageReduction.bypass.types this.id))}}inherited-item{{/if}}">
+                                        <input type="checkbox" class="damage-type-checkbox" data-category="damageReduction" data-attack-key="{{../key}}" data-value="{{this.id}}"
+                                            {{#if ../../this.damageReduction.bypass.isInheritedTypes}}
+                                                {{#if (includes ../../action.damageReduction.bypass.types this.id)}}checked class="is-selected"{{/if}}
+                                            {{else}}
+                                                {{#if (includes ../this.damageReduction.bypass.types this.id)}}checked class="is-selected"{{/if}}
+                                            {{/if}}>
+                                        <span>{{this.label}}</span>
+                                    </label>
+                                    {{/each}}
+                                    <!-- Hidden inputs for selected values will be added by JavaScript -->
+                                    <div class="damageReduction-hidden-inputs-{{@index}}"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        <div class="form-footer">
+            <button type="submit" class="submit-button">
+                <i class="fa fa-save"></i> {{localize "PF1.AutomateDamage.Save"}}
+            </button>
+        </div>
+    </form>
+</div> 

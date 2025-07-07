@@ -164,6 +164,19 @@
 }
 
 .file-picker.btn {
-    margin-top: 0rem; /* Adjust the value as needed to raise the button */
-    margin-left: 14rem; /* Preserve the existing margin-left value */
+    margin-top: 0rem;
+}
+
+.damage-type-form .form-group.field-group .input-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    gap: 0;
+}
+
+.damage-type-form .form-group.field-group .input-group input[type="hidden"],
+.damage-type-form .form-group.field-group .input-group input[type="text"] {
+    flex: 1 1 auto;
+    width: 100%;
 }

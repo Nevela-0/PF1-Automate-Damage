@@ -1,0 +1,700 @@
+.global-damage-settings,
+.action-damage-settings {
+    padding: 10px;
+    font-family: var(--font-primary);
+}
+
+/* Scope all selectors with our specific containers to avoid affecting system UI */
+.global-damage-settings .form-header,
+.action-damage-settings .form-header {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.global-damage-settings .form-header h2,
+.action-damage-settings .form-header h2 {
+    margin: 0 0 5px 0;
+    font-size: 1.2em;
+    color: #444;
+}
+
+.global-damage-settings .form-header .notes,
+.action-damage-settings .form-header .notes {
+    color: #666;
+    font-style: italic;
+    font-size: 0.9em;
+    margin: 0;
+}
+
+.global-damage-settings .form-group,
+.action-damage-settings .form-group {
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
+}
+
+.global-damage-settings .section-title,
+.action-damage-settings .section-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #444;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    font-size: 1.1em;
+    text-align: center;
+    display: block;
+    width: 100%;
+}
+
+.global-damage-settings .attack-settings-toggle,
+.action-damage-settings .attack-settings-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+
+.global-damage-settings .attack-settings-toggle i,
+.action-damage-settings .attack-settings-toggle i {
+    transition: transform 0.2s ease-in-out;
+}
+
+.global-damage-settings .attack-settings-toggle i.fa-caret-right,
+.action-damage-settings .attack-settings-toggle i.fa-caret-right {
+    transform: rotate(-90deg);
+}
+
+.global-damage-settings .settings-row,
+.action-damage-settings .settings-row {
+    margin-bottom: 15px;
+    padding-left: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.global-damage-settings .settings-row label.checkbox,
+.action-damage-settings .settings-row label.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    min-width: 170px;
+    font-weight: normal;
+}
+
+.global-damage-settings .settings-row label.checkbox input,
+.action-damage-settings .settings-row label.checkbox input {
+    margin: 0;
+}
+
+.global-damage-settings .attack-settings-content,
+.action-damage-settings .attack-settings-content {
+    padding: 5px;
+    max-height: 500px;
+    width: 520px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease-in-out;
+}
+
+.global-damage-settings .attack-settings-content.collapsed,
+.action-damage-settings .attack-settings-content.collapsed {
+    max-height: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.global-damage-settings .attack-section,
+.action-damage-settings .attack-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.global-damage-settings .attack-header,
+.action-damage-settings .attack-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #000;
+}
+
+/* Two-column layout */
+.global-damage-settings .two-column-layout {
+    display: flex;
+    gap: 20px;
+}
+
+.global-damage-settings .left-column {
+    flex: 0 0 50%;
+    max-width: 48%;
+}
+
+.global-damage-settings .right-column {
+    flex: 0 0 50%;
+    max-width: 48%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Three-column layout */
+.global-damage-settings .three-column-layout {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.global-damage-settings .three-column-layout .multiselect-container {
+    flex: 1;
+    min-width: 0;
+    width: calc(33.33% - 7px);
+}
+
+/* Multiselect container */
+.global-damage-settings .multiselect-container {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+    overflow: visible;
+    position: relative;
+    margin-bottom: 5px;
+}
+
+.global-damage-settings .multiselect-container.hidden {
+    display: none;
+}
+
+.global-damage-settings .multiselect-header {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 5px 10px;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 0.9em;
+    color: #444;
+}
+
+/* Tags container */
+.global-damage-settings .multiselect-tags-container {
+    min-height: 36px;
+    padding: 5px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.global-damage-settings .multiselect-placeholder {
+    color: #888;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.global-damage-settings .multiselect-tag {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    padding: 2px 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9em;
+}
+
+.global-damage-settings .multiselect-tag .remove-tag {
+    cursor: pointer;
+    color: #666;
+    font-size: 0.8em;
+}
+
+.global-damage-settings .multiselect-tag .remove-tag:hover {
+    color: #ff3333;
+}
+
+/* Dropdown toggle */
+.global-damage-settings .multiselect-dropdown-toggle {
+    position: absolute;
+    right: 8px;
+    top: 36px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #777;
+}
+
+.global-damage-settings .multiselect-dropdown-toggle i {
+    transition: transform 0.2s ease;
+    font-size: 0.8em;
+}
+
+/* Dropdown */
+.global-damage-settings .multiselect-dropdown {
+    position: fixed;
+    top: auto;
+    left: auto;
+    width: 250px;
+    background: #e1e1e1;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.global-damage-settings .multiselect-dropdown.visible {
+    max-height: 300px;
+    opacity: 1;
+}
+
+/* Search input */
+.global-damage-settings .multiselect-search {
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.global-damage-settings .multiselect-search-input {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* Option list */
+.global-damage-settings .multiselect-list {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+.global-damage-settings .multiselect-option {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-bottom: 2px;
+}
+
+.global-damage-settings .multiselect-option:hover {
+    background-color: #f0f0f0;
+}
+
+.global-damage-settings .multiselect-option.selected {
+    background-color: #e8f0ff;
+}
+
+.global-damage-settings .multiselect-option input[type="checkbox"] {
+    margin: 0;
+}
+
+.global-damage-settings .multiselect-option input[type="checkbox"]:checked + span {
+    font-weight: bold;
+}
+
+/* Action damage settings form styles */
+.action-damage-settings .multiselect-container {
+    margin-top: 10px;
+    max-height: 250px;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: max-height 0.3s ease-in-out;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.action-damage-settings .multiselect-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px;
+    overflow-y: auto;
+    max-height: 180px;
+}
+
+.action-damage-settings .multiselect-container.hidden {
+    max-height: 0;
+    border: none;
+    margin: 0;
+}
+
+.action-damage-settings .multiselect-option {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.action-damage-settings .multiselect-option:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.action-damage-settings .multiselect-option input[type="checkbox"] {
+    margin: 0;
+}
+
+.global-damage-settings .input-group,
+.action-damage-settings .input-group {
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.global-damage-settings input[type="number"],
+.action-damage-settings input[type="number"] {
+    width: 60px;
+    padding: 3px 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    text-align: center;
+    margin-left: 5px;
+}
+
+.global-damage-settings input[type="number"].hidden,
+.action-damage-settings input[type="number"].hidden {
+    display: none;
+}
+
+.global-damage-settings .hint,
+.action-damage-settings .hint {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 5px;
+    margin-left: 25px;
+    width: 100%;
+    flex: 0 0 100%;
+}
+
+.global-damage-settings .form-footer,
+.action-damage-settings .form-footer {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.global-damage-settings .submit-button,
+.action-damage-settings .submit-button {
+    width: auto;
+}
+
+.global-damage-settings .option-section,
+.action-damage-settings .option-section {
+    margin-top: 15px;
+    padding: 0 10px;
+    width: 100%;
+}
+
+.global-damage-settings .checkbox,
+.action-damage-settings .checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.global-damage-settings input.toggle-input,
+.action-damage-settings input.toggle-input {
+    margin-right: 5px;
+}
+
+/* Three-column layout - add for action-damage-settings */
+.action-damage-settings .three-column-layout {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.action-damage-settings .three-column-layout .multiselect-container {
+    flex: 1;
+    min-width: 0;
+    width: calc(33.33% - 7px);
+}
+
+/* Update multiselect container styles to match the global settings */
+.action-damage-settings .multiselect-container {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+    overflow: visible;
+    position: relative;
+    margin-bottom: 5px;
+}
+
+.action-damage-settings .multiselect-header {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 5px 10px;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 0.9em;
+    color: #444;
+}
+
+/* Tags container */
+.action-damage-settings .multiselect-tags-container {
+    min-height: 36px;
+    padding: 5px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.action-damage-settings .multiselect-placeholder {
+    color: #888;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.action-damage-settings .multiselect-tag {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    padding: 2px 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9em;
+}
+
+.action-damage-settings .multiselect-tag .remove-tag {
+    cursor: pointer;
+    color: #666;
+    font-size: 0.8em;
+}
+
+.action-damage-settings .multiselect-tag .remove-tag:hover {
+    color: #ff3333;
+}
+
+/* Dropdown toggle */
+.action-damage-settings .multiselect-dropdown-toggle {
+    position: absolute;
+    right: 8px;
+    top: 36px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #777;
+}
+
+.action-damage-settings .multiselect-dropdown-toggle i {
+    transition: transform 0.2s ease;
+    font-size: 0.8em;
+}
+
+/* Dropdown */
+.action-damage-settings .multiselect-dropdown {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    width: 100%;
+    background: #e1e1e1;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.action-damage-settings .multiselect-dropdown.visible {
+    display: block;
+}
+
+.action-damage-settings .multiselect-search {
+    padding: 5px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.action-damage-settings .multiselect-search-input {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    margin: 0;
+}
+
+.action-damage-settings .multiselect-list {
+    max-height: 150px;
+    overflow-y: auto;
+    padding: 5px 0;
+}
+
+.action-damage-settings .multiselect-option {
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.2s ease;
+}
+
+.action-damage-settings .multiselect-option:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.action-damage-settings .multiselect-option.selected {
+    background: rgba(0, 0, 100, 0.05);
+}
+
+.action-damage-settings .multiselect-option input[type="checkbox"] {
+    margin: 0;
+}
+
+.action-damage-settings .multiselect-option input[type="checkbox"]:checked + span {
+    font-weight: bold;
+}
+
+/* Attack section specific styling */
+.attack-section .three-column-layout {
+    margin-top: 15px;
+    margin-bottom: 10px;
+}
+
+.attack-section .multiselect-container {
+    min-height: initial;
+    margin-bottom: 10px;
+}
+
+/* Tri-state checkbox styles */
+.global-damage-settings .tri-state-checkbox,
+.action-damage-settings .tri-state-checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #999;
+    border-radius: 3px;
+    position: relative;
+    cursor: pointer;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 5px;
+}
+
+.global-damage-settings .tri-state-checkbox .tri-state-indicator,
+.action-damage-settings .tri-state-checkbox .tri-state-indicator {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* True state - checkmark */
+.global-damage-settings .tri-state-checkbox[data-state="true"] .tri-state-indicator,
+.action-damage-settings .tri-state-checkbox[data-state="true"] .tri-state-indicator {
+    position: relative;
+}
+
+.global-damage-settings .tri-state-checkbox[data-state="true"] .tri-state-indicator::before,
+.action-damage-settings .tri-state-checkbox[data-state="true"] .tri-state-indicator::before {
+    content: "\f00c";
+    font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "FontAwesome";
+    font-weight: 900;
+    position: absolute;
+    font-size: 10px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #000;
+}
+
+/* Inherit state - minus sign */
+.global-damage-settings .tri-state-checkbox[data-state="inherit"] .tri-state-indicator,
+.action-damage-settings .tri-state-checkbox[data-state="inherit"] .tri-state-indicator {
+    position: relative;
+}
+
+.global-damage-settings .tri-state-checkbox[data-state="inherit"] .tri-state-indicator::before,
+.action-damage-settings .tri-state-checkbox[data-state="inherit"] .tri-state-indicator::before {
+    content: "\f068";
+    font-family: "Font Awesome 6 Free", "Font Awesome 5 Free", "FontAwesome";
+    font-weight: 900;
+    position: absolute;
+    font-size: 10px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+}
+
+/* False state - empty */
+.global-damage-settings .tri-state-checkbox[data-state="false"] .tri-state-indicator,
+.action-damage-settings .tri-state-checkbox[data-state="false"] .tri-state-indicator {
+    background: transparent;
+}
+
+/* Inherited tag styling */
+.global-damage-settings .inherited-tag,
+.action-damage-settings .inherited-tag,
+.global-damage-settings .multiselect-tag.inherited-tag,
+.action-damage-settings .multiselect-tag.inherited-tag {
+    font-style: italic;
+    color: #777;
+    font-size: 0.8em;
+    margin-right: 5px;
+    background: rgba(0,0,0,0.05);
+    padding: 2px 5px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+/* Style for inherited damage type tags specifically */
+.action-damage-settings .multiselect-tag.inherited-tag {
+    border-left: 3px solid #aaa;
+    background: rgba(0,0,0,0.03);
+}
+
+/* Add (Inherited) text after the label for inherited tags */
+/* We're now adding (Inherited) text directly in JavaScript, so we don't need the ::after pseudo-element */
+.action-damage-settings .multiselect-tag.inherited-tag {
+    border-left: 3px solid #88a;
+    background: rgba(0,0,0,0.03);
+    font-style: italic;
+}
+
+/* Style for inherited options in the dropdown */
+.action-damage-settings .multiselect-option.inherited-item span {
+    font-style: italic;
+    color: #777;
+}
+
+.action-damage-settings .multiselect-option.inherited-item::after {
+    content: "(Inherited)";
+    font-size: 0.8em;
+    color: #777;
+    font-style: italic;
+    margin-left: 5px;
+}
+
+/* Make sure the regular non-inherited tags are distinct */
+.action-damage-settings .multiselect-tag:not(.inherited-tag) {
+    background: rgba(65, 105, 225, 0.1);
+    border-left: 3px solid royalblue;
+} 

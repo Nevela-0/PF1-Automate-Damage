@@ -47,15 +47,25 @@ Automate Damage is a module for Foundry Virtual Tabletop (FoundryVTT) designed t
 
 ### Hardness
 
-- **(New)** Hardness reduces damage from all sources (except ability score damage) by the amount entered in the Damage Reduction section of the actor's sheet. This means that whenever damage is applied to an actor, the hardness value will reduce the incoming damage before it’s applied. The only exception to this rule is **adamantine**: if the hardness value is less than or equal to 20, adamantine will bypass hardness completely.
+- Hardness reduces damage from all sources (except ability score damage) by the amount entered in the Damage Reduction section of the actor's sheet. This means that whenever damage is applied to an actor, the hardness value will reduce the incoming damage before it’s applied. The only exception to this rule is **adamantine**: if the hardness value is less than or equal to 20, adamantine will bypass hardness completely.
 
-#### Ignoring or Bypassing Hardness
+#### Bypassing Defenses
 
-- You can ignore or bypass an amount of hardness by adding specific flags to your weapon or attack.
-  - To **completely bypass hardness**, add a boolean flag named `"ignoreHardness"` to your weapon or attack.
-  - To **bypass a specific amount of hardness**, add a dictionary flag named `"ignoreHardness"` with the value set to the desired amount you want to bypass.
+~~- You can ignore or bypass an amount of hardness by adding specific flags to your weapon or attack.  
+  - To **completely bypass hardness**, add a boolean flag named `"ignoreHardness"` to your weapon or attack.  
+  - To **bypass a specific amount of hardness**, add a dictionary flag named `"ignoreHardness"` with the value set to the desired amount you want to bypass.~~
 
-This allows for flexible handling of hardness in different combat scenarios, giving you control over how much damage reduction is applied based on the type of weapon or material used.
+> ⚠️ **Deprecated:** The above method is still supported by the module but will be removed in a future version. It is being phased out in favor of the new **Damage Settings** logic.
+
+Items now include **Global Damage Settings**, and each action within an item has its own **Action Damage Settings**. These allow you to configure how the damage should interact with:
+
+- **Hardness** (bypass completely or ignore a set amount)
+- **Immunities**
+- **Resistances**
+- **Damage Reduction**
+
+This new system provides a more flexible and user-friendly way to control how your damage behaves against different defenses.
+
 
 ### Notes
 - **Silver and Alchemical Silver are treated as the same material.** If you add Silver as a custom material it will not bypass the Silver DR from the system. You will have to add a custom DR with the same name for that.
@@ -66,6 +76,44 @@ This allows for flexible handling of hardness in different combat scenarios, giv
   **Examples**:
   - /d 3d6[Fire, Slashing].
   - /d 1d8[Acid] + 2d4[Slashing, Piercing] + 5[Negative]
+
+### Alternative Roll Command and Macros
+
+In addition to the `/d` and `/damage` commands, you can also use `/ad` to roll damage using the dialog box provided by Automate Damage. This is a convenient way to access all the module's damage configuration options directly in Foundry's UI.
+
+#### Macro Usage
+
+You can use `/ad macro` to create a new macro. The module will open a dialog box UI that you can configure with your desired damage formula, damage types, and macro name. 
+
+The module also exposes a macro-friendly function: `AutomateDamage.roll()`. This allows you to programmatically create damage rolls with precise control over damage types and formulas.
+
+You can call this function in a macro using either a **string** or **object** syntax:
+
+```js
+// Simple usage with a string
+AutomateDamage.roll("type: fire, for: 1d8+5");
+
+// Object format with multiple damage types
+AutomateDamage.roll({
+  formula: "1d8+5",
+  damageTypes: ["fire", "acid"]
+});
+
+// Mixed damage types with string format
+AutomateDamage.roll("1d8 fire + 2d6 acid + 5 bludgeoning");
+
+// Recommended: Component-based approach
+AutomateDamage.roll({
+  components: [
+    { formula: "1d8", damageTypes: ["fire"] },
+    { formula: "2d6+5", damageTypes: ["slashing"] },
+    { formula: "10", damageTypes: ["acid"] }
+  ]
+});
+```
+
+This function returns a `ChatMessage` and works seamlessly with the rest of the Automate Damage system, including resistances, vulnerabilities, DR, and hardness.
+
 
 ### Ammunition
 - **Material**: Since ammunition does not have material supported by the PF1E system yet, you can add a dictionary flag named "Material" with a value of the material you want the ammo to be. You can add magic in this dictionary flag to treat the ammo as magic to overcome DR in case it does not have an enhancement bonus.

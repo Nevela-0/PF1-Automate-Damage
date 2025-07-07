@@ -13,6 +13,10 @@
             "name": "Custom Damage Types",
             "label": "Configure Custom Damage Types",
             "hint": "Add or edit custom damage types for the module."
+        },
+        "massiveDamage": {
+            "name": "Massive Damage Rule",
+            "hint": "Enable the optional Massive Damage rule (Pathfinder Core Rulebook p.189). When a creature takes damage from a single attack equal to or greater than its massive damage threshold, it must make a Fortitude save or die."
         }
     },
     "FORM": {
@@ -148,5 +152,38 @@
         "save": "Save",
         "cancel": "Cancel",
         "browse": "Browse"
+    },
+    "PF1.AutomateDamage": {
+        "GlobalSettings": {
+            "Title": "Item Damage Settings",
+            "Description": "Configure global damage automation settings for this item.",
+            "HardnessSection": "Hardness Settings",
+            "BypassSection": "Damage Type Bypass Settings"
+        },
+        "ActionSettings": {
+            "Title": "Action Damage Settings",
+            "Description": "Configure damage automation settings for this specific action.",
+            "GlobalActionSettings": "Action Settings",
+            "BypassSection": "Damage Type Bypass Settings",
+            "AttacksSection": "Per-Attack Settings",
+            "ToggleAttackSettings": "Toggle per-attack settings"
+        },
+        "Settings": {
+            "BypassHardness": "Bypass Hardness",
+            "BypassHardnessHint": "Ignores hardness entirely when dealing damage.",
+            "IgnoreHardness": "Ignore Hardness",
+            "IgnoreHardnessHint": "Ignores a specific amount of hardness when dealing damage.",
+            "BypassImmunity": "Bypass Immunity",
+            "BypassImmunityHint": "Bypasses immunity to selected damage types.",
+            "BypassResistance": "Bypass Resistance",
+            "BypassResistanceHint": "Bypasses resistance to selected damage types.",
+            "BypassDR": "Bypass DR",
+            "BypassDRHint": "Bypasses DR for selected damage types."
+        },
+        "Buttons": {
+            "GlobalSettings": "Global Damage Settings",
+            "ActionSettings": "Action Damage Settings"
+        },
+        "Save": "Save Changes"
     }
 }
