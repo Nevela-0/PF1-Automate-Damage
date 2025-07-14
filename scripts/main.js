@@ -2,7 +2,9 @@ import { AutomateDamageModule } from './config.js';
 import { onRenderChatMessage, addClusteredShotsButton } from './buttons.js';
 import { AutomateDamageCommands } from './chatCommands.js';
 import { initializeSockets, checkMassiveDamage } from './sockets.js';
+import { initItemAttackFlagCopy } from './itemAttackFlagCopy.js';
 import './damageSettingsForms.js';
+import './footnotes.js';
 
 Hooks.on("renderChatMessage", (app, html, data) => {
     onRenderChatMessage(html);
@@ -17,6 +19,7 @@ Hooks.once("ready", () => {
     AutomateDamageModule.handleReadyHook();
     overrideApplyDamage();
     AutomateDamageCommands.initialize();
+    initItemAttackFlagCopy();
 });
 
 function overrideApplyDamage () {
@@ -68,9 +71,12 @@ function interceptCardData(wrapped, message, elementObject) {
             targetInfo.id = chatMessage.getAttribute('data-message-id');
         };
         targetInfo.buttonType = button.dataset.tooltip || button.innerText;
+        
         if (chatAttack) {
             targetInfo.attackIndex = chatAttack.getAttribute('data-index');
+
             let damageElement = button.closest('th[data-damage-type]');
+            
             if (!damageElement) {
                 const buttonType = button.getAttribute('data-type'); // 'critical' or 'normal'
                 if (buttonType) {
@@ -124,6 +130,7 @@ function customApplyDamage(originalApplyDamage, value, config) {
 
         let actionId = message.system?.action?.id;
         let itemOptionsForSort = {
+            token,
             itemSource,
             itemType,
             damageMult,
@@ -430,7 +437,8 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
         if (attackDR && attackDR.inherit === false) {
             const bypass = attackDR.bypass;
             if (bypass?.enabled && Array.isArray(bypass.types)) {
-                return bypass.types.map(t => t.toLowerCase());
+                if (bypass.types.includes('all')) return ['all'];
+                return bypass.types.map(t => t === 'dr-none' ? '-' : t.toLowerCase());
             }
             return [];
         }
@@ -446,7 +454,8 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             if (actionDR && actionDR.inherit === false) {
                 const bypass = actionDR.bypass;
                 if (bypass?.enabled && Array.isArray(bypass.types)) {
-                    return bypass.types.map(t => t.toLowerCase());
+                    if (bypass.types.includes('all')) return ['all'];
+                    return bypass.types.map(t => t === 'dr-none' ? '-' : t.toLowerCase());
                 }
                 return [];
             }
@@ -454,7 +463,8 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
         // 3. Global settings
         const globalBypass = itemOptionsForSort?.globalItemSettings?.damageReduction?.bypass;
         if (globalBypass?.enabled && Array.isArray(globalBypass.types)) {
-            return globalBypass.types.map(t => t.toLowerCase());
+            if (globalBypass.types.includes('all')) return ['all'];
+            return globalBypass.types.map(t => t === 'dr-none' ? '-' : t.toLowerCase());
         }
         return [];
     }
@@ -502,22 +512,30 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             let ammoElement = doc.querySelector('[data-ammo-id]');
             let ammoId = ammoElement ? ammoElement.getAttribute('data-ammo-id') : null;
             const ammoItem = itemSource.parent.items.get(ammoId);
-            let ckl = ammoItem?.['ckl-roll-bonuses'] ?? {};
-            if (ckl.hasOwnProperty('ammo-enhancement') || ckl.hasOwnProperty('ammo-enhancement-stacks')) {
-                const enh = +ckl['ammo-enhancement'] || 0;
-                const stacks = +ckl['ammo-enhancement-stacks'] || 0;
-                enhBonus = enh + stacks;
-            } else if (actionEnhBonus > 0) {
-                enhBonus = 1;
+            if(api) {
+                const dataActionId = itemOptionsForSort.actionId;
+                const action = itemSource?.actions?.get(dataActionId);
+                const targets = [itemOptionsForSort.token];
+                const enhData = api.utils.getEnhancementBonusForAction({ action, ammo: ammoItem, targets });
+                enhBonus = enhData.total;
             } else {
-                const magicFlag = ammoItem?.system?.flags?.boolean;
-                for (let key in magicFlag) {
-                    if (key.toLowerCase() == "magic") {
-                        enhBonus = 1;
-                        break;
+                let ckl = ammoItem?.['ckl-roll-bonuses'] ?? {};
+                if (ckl.hasOwnProperty('ammo-enhancement') || ckl.hasOwnProperty('ammo-enhancement-stacks')) {
+                    const enh = +ckl['ammo-enhancement'] || 0;
+                    const stacks = +ckl['ammo-enhancement-stacks'] || 0;
+                    enhBonus = enh + stacks;
+                } else if (actionEnhBonus > 0) {
+                    enhBonus = 1;
+                } else {
+                    const magicFlag = ammoItem?.system?.flags?.boolean;
+                    for (let key in magicFlag) {
+                        if (key.toLowerCase() == "magic") {
+                            enhBonus = 1;
+                            break;
+                        };
                     };
                 };
-            };
+            }
         } else { 
             if (addons?.includes("magic")) {
                 enhBonus = 1;
@@ -586,7 +604,8 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                 const drType = dr.types[i].toLowerCase();
                 const hasDamageType = damageTypes.includes(drType);
                 const hasBypassType = bypassDRTypes.includes(drType);
-                if((!hasDamageType && !hasBypassType) && dr.amount == highestDR && !appliedDR) {
+                const hasAllBypass = bypassDRTypes.includes('all');
+                if((!hasDamageType && !hasBypassType && !hasAllBypass) && dr.amount == highestDR && !appliedDR) {
                     let found = false;
                     for(let i=0;i<damageSortObjects.length;i++) {
                         const currentDamageSortObject = damageSortObjects[i];
@@ -637,7 +656,8 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
                 const drType = dr.types[i].toLowerCase();
                 const typeIndex = damageTypes.includes(drType);
                 const bypassIndex = bypassDRTypes.includes(drType);
-                if((!typeIndex && !bypassIndex)) {
+                const hasAllBypass = bypassDRTypes.includes('all');
+                if((!typeIndex && !bypassIndex && !hasAllBypass)) {
                     passes++
                     if((passes == 2||dr.types.length==1) && dr.amount == highestDR && !appliedDR) {
                         let found = false;
@@ -706,8 +726,12 @@ function damageImmunityCalculation(damageImmunities, attackDamage, damageSortObj
                     if (attackSettings.immunity.inherit) {
                         useAction = true;
                     } else {
-                        if (attackSettings.immunity.bypass?.enabled && Array.isArray(attackSettings.immunity.bypass.types) && attackSettings.immunity.bypass.types.map(t => t.toLowerCase()).includes(typeLower)) {
-                            bypassImmunity = true;
+                        if (attackSettings.immunity.bypass?.enabled && Array.isArray(attackSettings.immunity.bypass.types)) {
+                            if (attackSettings.immunity.bypass.types.includes('all')) {
+                                bypassImmunity = true;
+                            } else if (attackSettings.immunity.bypass.types.map(t => t.toLowerCase()).includes(typeLower)) {
+                                bypassImmunity = true;
+                            }
                         }
                     }
                 } else {
@@ -724,8 +748,12 @@ function damageImmunityCalculation(damageImmunities, attackDamage, damageSortObj
                         if (actionObj.immunity.inherit) {
                             useGlobal = true;
                         } else {
-                            if (actionObj.immunity.bypass?.enabled && Array.isArray(actionObj.immunity.bypass.types) && actionObj.immunity.bypass.types.map(t => t.toLowerCase()).includes(typeLower)) {
-                                bypassImmunity = true;
+                            if (actionObj.immunity.bypass?.enabled && Array.isArray(actionObj.immunity.bypass.types)) {
+                                if (actionObj.immunity.bypass.types.includes('all')) {
+                                    bypassImmunity = true;
+                                } else if (actionObj.immunity.bypass.types.map(t => t.toLowerCase()).includes(typeLower)) {
+                                    bypassImmunity = true;
+                                }
                             }
                         }
                     } else {
@@ -734,8 +762,12 @@ function damageImmunityCalculation(damageImmunities, attackDamage, damageSortObj
                 }
                 // 3. If using global, check globalItemSettings
                 if (useGlobal && globalItemSettings && globalItemSettings.immunity) {
-                    if (globalItemSettings.immunity.bypass?.enabled && Array.isArray(globalItemSettings.immunity.bypass.types) && globalItemSettings.immunity.bypass.types.map(t => t.toLowerCase()).includes(typeLower)) {
-                        bypassImmunity = true;
+                    if (globalItemSettings.immunity.bypass?.enabled && Array.isArray(globalItemSettings.immunity.bypass.types)) {
+                        if (globalItemSettings.immunity.bypass.types.includes('all')) {
+                            bypassImmunity = true;
+                        } else if (globalItemSettings.immunity.bypass.types.map(t => t.toLowerCase()).includes(typeLower)) {
+                            bypassImmunity = true;
+                        }
                     }
                 }
             }
@@ -780,6 +812,7 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
             const atk = itemOptionsForSort.attackSettings.resistance.bypass;
             if (atk.inherit === false || atk.inherit === undefined) {
                 if (atk.enabled && Array.isArray(atk.types)) {
+                    if (atk.types.includes('all')) return ['all'];
                     types = atk.types.map(t => t.toLowerCase());
                     inherit = false;
                 }
@@ -796,6 +829,7 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                 const act = actionObj.resistance.bypass;
                 if (act.inherit === false || act.inherit === undefined) {
                     if (act.enabled && Array.isArray(act.types)) {
+                        if (act.types.includes('all')) return ['all'];
                         types = act.types.map(t => t.toLowerCase());
                         inherit = false;
                     }
@@ -806,6 +840,7 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
         if (inherit && itemOptionsForSort?.globalItemSettings?.resistance?.bypass) {
             const glob = itemOptionsForSort.globalItemSettings.resistance.bypass;
             if (glob.enabled && Array.isArray(glob.types)) {
+                if (glob.types.includes('all')) return ['all'];
                 types = glob.types.map(t => t.toLowerCase());
             }
         }
@@ -863,7 +898,8 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                 const erType = er.types[i];
                 const hasDamageType = damageTypes.includes(erType);
                 const hasBypassType = bypassResTypes.includes(erType);
-                if ((!hasDamageType && !hasBypassType)) {
+                const hasAllBypass = bypassResTypes.includes('all');
+                if ((!hasDamageType && !hasBypassType && !hasAllBypass)) {
                     found = false;
                     break;
                 } else {
@@ -908,7 +944,8 @@ function elementalResistancesCalculation(eRes, attackDamage, damageTypes, damage
                 const erType = er.types[i];
                 const hasDamageType = damageTypes.includes(erType);
                 const hasBypassType = bypassResTypes.includes(erType);
-                if (hasDamageType && !hasBypassType) {
+                const hasAllBypass = bypassResTypes.includes('all');
+                if ((hasDamageType && !hasBypassType && !hasAllBypass)) {
                     for (let j = 0; j < damageSortObjects.length; j++) {
                         const currentDamageSortObject = damageSortObjects[j];
                         if (currentDamageSortObject.names.includes(erType)) {

@@ -41,17 +41,24 @@
                 <div id="bypass-immunity-list-container" class="bypass-immunity-wrapper multiselect-container">
                     <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassImmunity"}}</div>
                     <div class="multiselect-tags-container">
-                        {{#if bypassImmunityList.length}}
-                            {{#each damageTypes as |damageType|}}
-                                {{#if (includes ../bypassImmunityList damageType.id)}}
-                                <div class="multiselect-tag" data-value="{{damageType.id}}">
-                                    <span>{{damageType.label}}</span>
-                                    <i class="fas fa-times remove-tag"></i>
-                                </div>
-                                {{/if}}
-                            {{/each}}
+                        {{#if bypassImmunityShowAllTag}}
+                            <div class="multiselect-tag" data-value="all">
+                                <span>All</span>
+                                <i class="fas fa-times remove-tag"></i>
+                            </div>
                         {{else}}
-                            <span class="multiselect-placeholder">None selected</span>
+                            {{#if bypassImmunityList.length}}
+                                {{#each damageTypesImmunity as |damageType|}}
+                                    {{#if (includes ../bypassImmunityList damageType.id)}}
+                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                        <span>{{damageType.label}}</span>
+                                        <i class="fas fa-times remove-tag"></i>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder">None selected</span>
+                            {{/if}}
                         {{/if}}
                     </div>
                     <div class="multiselect-dropdown-toggle">
@@ -62,7 +69,7 @@
                             <input type="text" class="multiselect-search-input" placeholder="Search...">
                         </div>
                         <div class="multiselect-list">
-                            {{#each damageTypes}}
+                            {{#each damageTypesImmunity}}
                             <label class="multiselect-option {{#if (includes ../bypassImmunityList this.id)}}selected{{/if}}">
                                 <input type="checkbox" name="bypassImmunityList" value="{{this.id}}" {{#if (includes ../bypassImmunityList this.id)}}checked{{/if}}>
                                 <span>{{this.label}}</span>
@@ -75,17 +82,24 @@
                 <div id="bypass-resistance-list-container" class="bypass-resistance-wrapper multiselect-container">
                     <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassResistance"}}</div>
                     <div class="multiselect-tags-container">
-                        {{#if bypassResistanceList.length}}
-                            {{#each damageTypes as |damageType|}}
-                                {{#if (includes ../bypassResistanceList damageType.id)}}
-                                <div class="multiselect-tag" data-value="{{damageType.id}}">
-                                    <span>{{damageType.label}}</span>
-                                    <i class="fas fa-times remove-tag"></i>
-                                </div>
-                                {{/if}}
-                            {{/each}}
+                        {{#if bypassResistanceShowAllTag}}
+                            <div class="multiselect-tag" data-value="all">
+                                <span>All</span>
+                                <i class="fas fa-times remove-tag"></i>
+                            </div>
                         {{else}}
-                            <span class="multiselect-placeholder">None selected</span>
+                            {{#if bypassResistanceList.length}}
+                                {{#each damageTypesResistance as |damageType|}}
+                                    {{#if (includes ../bypassResistanceList damageType.id)}}
+                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                        <span>{{damageType.label}}</span>
+                                        <i class="fas fa-times remove-tag"></i>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder">None selected</span>
+                            {{/if}}
                         {{/if}}
                     </div>
                     <div class="multiselect-dropdown-toggle">
@@ -96,7 +110,7 @@
                             <input type="text" class="multiselect-search-input" placeholder="Search...">
                         </div>
                         <div class="multiselect-list">
-                            {{#each damageTypes}}
+                            {{#each damageTypesResistance}}
                             <label class="multiselect-option {{#if (includes ../bypassResistanceList this.id)}}selected{{/if}}">
                                 <input type="checkbox" name="bypassResistanceList" value="{{this.id}}" {{#if (includes ../bypassResistanceList this.id)}}checked{{/if}}>
                                 <span>{{this.label}}</span>
@@ -109,17 +123,24 @@
                 <div id="bypass-dr-list-container" class="bypass-dr-wrapper multiselect-container">
                     <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassDR"}}</div>
                     <div class="multiselect-tags-container">
-                        {{#if bypassDRList.length}}
-                            {{#each damageTypes as |damageType|}}
-                                {{#if (includes ../bypassDRList damageType.id)}}
-                                <div class="multiselect-tag" data-value="{{damageType.id}}">
-                                    <span>{{damageType.label}}</span>
-                                    <i class="fas fa-times remove-tag"></i>
-                                </div>
-                                {{/if}}
-                            {{/each}}
+                        {{#if bypassDRShowAllTag}}
+                            <div class="multiselect-tag" data-value="all">
+                                <span>All</span>
+                                <i class="fas fa-times remove-tag"></i>
+                            </div>
                         {{else}}
-                            <span class="multiselect-placeholder">None selected</span>
+                            {{#if bypassDRList.length}}
+                                {{#each damageTypesDR as |damageType|}}
+                                    {{#if (includes ../bypassDRList damageType.id)}}
+                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                        <span>{{damageType.label}}</span>
+                                        <i class="fas fa-times remove-tag"></i>
+                                    </div>
+                                    {{/if}}
+                                {{/each}}
+                            {{else}}
+                                <span class="multiselect-placeholder">None selected</span>
+                            {{/if}}
                         {{/if}}
                     </div>
                     <div class="multiselect-dropdown-toggle">
@@ -130,7 +151,7 @@
                             <input type="text" class="multiselect-search-input" placeholder="Search...">
                         </div>
                         <div class="multiselect-list">
-                            {{#each damageTypes}}
+                            {{#each damageTypesDR}}
                             <label class="multiselect-option {{#if (includes ../bypassDRList this.id)}}selected{{/if}}">
                                 <input type="checkbox" name="bypassDRList" value="{{this.id}}" {{#if (includes ../bypassDRList this.id)}}checked{{/if}}>
                                 <span>{{this.label}}</span>

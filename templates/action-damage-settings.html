@@ -3,13 +3,6 @@
         display: none;
     }
     
-    /* Debug style - enable to highlight inherited tags */
-    /*
-    .action-damage-settings .multiselect-tag.inherited-tag {
-        border: 2px dashed red !important;
-    }
-    */
-    
     .action-damage-settings .multiselect-tag.inherited-tag span,
     .action-damage-settings .multiselect-option.inherited-item span {
         font-style: italic;
@@ -90,8 +83,13 @@
                     <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassImmunity"}}</div>
                     <div class="multiselect-tags-container" data-inherited="{{#if action.immunity.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
                         {{#if action.immunity.bypass.isInheritedTypes}}
+                            {{#if actionBypassImmunityShowAllTagInherited}}
+                                <div class="multiselect-tag inherited-tag" data-value="all" data-inherited="true">
+                                    <span>All (Inherited)</span>
+                                </div>
+                            {{else}}
                             {{#if action.immunity.bypass.types.length}}
-                                {{#each damageTypes as |damageType|}}
+                                {{#each damageTypesImmunity as |damageType|}}
                                     {{#if (includes ../action.immunity.bypass.types damageType.id)}}
                                     <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
                                         <span>{{damageType.label}} (Inherited)</span>
@@ -101,18 +99,26 @@
                             {{else}}
                                 <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
                             {{/if}}
+                            {{/if}}
                         {{else}}
-                            {{#if action.immunity.bypass.types.length}}
-                                {{#each damageTypes as |damageType|}}
-                                    {{#if (includes ../action.immunity.bypass.types damageType.id)}}
-                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
-                                        <span>{{damageType.label}}</span>
-                                        <i class="fas fa-times remove-tag"></i>
-                                    </div>
-                                    {{/if}}
-                                {{/each}}
+                            {{#if actionBypassImmunityShowAllTag}}
+                                <div class="multiselect-tag" data-value="all">
+                                    <span>All</span>
+                                    <i class="fas fa-times remove-tag"></i>
+                                </div>
                             {{else}}
-                                <span class="multiselect-placeholder">None Selected</span>
+                                {{#if action.immunity.bypass.types.length}}
+                                    {{#each damageTypesImmunity as |damageType|}}
+                                        {{#if (includes ../action.immunity.bypass.types damageType.id)}}
+                                        <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                            <span>{{damageType.label}}</span>
+                                            <i class="fas fa-times remove-tag"></i>
+                                        </div>
+                                        {{/if}}
+                                    {{/each}}
+                                {{else}}
+                                    <span class="multiselect-placeholder">None Selected</span>
+                                {{/if}}
                             {{/if}}
                         {{/if}}
                     </div>
@@ -124,7 +130,7 @@
                             <input type="text" class="multiselect-search-input" placeholder="Search...">
                         </div>
                         <div class="multiselect-list">
-                            {{#each damageTypes}}
+                            {{#each damageTypesImmunity}}
                             <label class="multiselect-option {{#if (and ../action.immunity.bypass.isInheritedTypes (includes ../action.immunity.bypass.types this.id))}}inherited-item{{/if}}">
                                 <input type="checkbox" class="damage-type-checkbox" data-category="immunity" data-scope="action" data-value="{{this.id}}" {{#if (includes ../action.immunity.bypass.types this.id)}}checked class="is-selected"{{/if}}>
                                 <span>{{this.label}}</span>
@@ -140,8 +146,13 @@
                     <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassResistance"}}</div>
                     <div class="multiselect-tags-container" data-inherited="{{#if action.resistance.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
                         {{#if action.resistance.bypass.isInheritedTypes}}
+                            {{#if actionBypassResistanceShowAllTagInherited}}
+                                <div class="multiselect-tag inherited-tag" data-value="all" data-inherited="true">
+                                    <span>All (Inherited)</span>
+                                </div>
+                            {{else}}
                             {{#if action.resistance.bypass.types.length}}
-                                {{#each damageTypes as |damageType|}}
+                                {{#each damageTypesResistance as |damageType|}}
                                     {{#if (includes ../action.resistance.bypass.types damageType.id)}}
                                     <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
                                         <span>{{damageType.label}} (Inherited)</span>
@@ -151,18 +162,26 @@
                             {{else}}
                                 <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
                             {{/if}}
+                            {{/if}}
                         {{else}}
-                            {{#if action.resistance.bypass.types.length}}
-                                {{#each damageTypes as |damageType|}}
-                                    {{#if (includes ../action.resistance.bypass.types damageType.id)}}
-                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
-                                        <span>{{damageType.label}}</span>
-                                        <i class="fas fa-times remove-tag"></i>
-                                    </div>
-                                    {{/if}}
-                                {{/each}}
+                            {{#if actionBypassResistanceShowAllTag}}
+                                <div class="multiselect-tag" data-value="all">
+                                    <span>All</span>
+                                    <i class="fas fa-times remove-tag"></i>
+                                </div>
                             {{else}}
-                                <span class="multiselect-placeholder">None Selected</span>
+                                {{#if action.resistance.bypass.types.length}}
+                                    {{#each damageTypesResistance as |damageType|}}
+                                        {{#if (includes ../action.resistance.bypass.types damageType.id)}}
+                                        <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                            <span>{{damageType.label}}</span>
+                                            <i class="fas fa-times remove-tag"></i>
+                                        </div>
+                                        {{/if}}
+                                    {{/each}}
+                                {{else}}
+                                    <span class="multiselect-placeholder">None Selected</span>
+                                {{/if}}
                             {{/if}}
                         {{/if}}
                     </div>
@@ -174,7 +193,7 @@
                             <input type="text" class="multiselect-search-input" placeholder="Search...">
                         </div>
                         <div class="multiselect-list">
-                            {{#each damageTypes}}
+                            {{#each damageTypesResistance}}
                             <label class="multiselect-option {{#if (and ../action.resistance.bypass.isInheritedTypes (includes ../action.resistance.bypass.types this.id))}}inherited-item{{/if}}">
                                 <input type="checkbox" class="damage-type-checkbox" data-category="resistance" data-scope="action" data-value="{{this.id}}" {{#if (includes ../action.resistance.bypass.types this.id)}}checked class="is-selected"{{/if}}>
                                 <span>{{this.label}}</span>
@@ -190,8 +209,13 @@
                     <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassDR"}}</div>
                     <div class="multiselect-tags-container" data-inherited="{{#if action.damageReduction.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
                         {{#if action.damageReduction.bypass.isInheritedTypes}}
+                            {{#if actionBypassDRShowAllTagInherited}}
+                                <div class="multiselect-tag inherited-tag" data-value="all" data-inherited="true">
+                                    <span>All (Inherited)</span>
+                                </div>
+                            {{else}}
                             {{#if action.damageReduction.bypass.types.length}}
-                                {{#each damageTypes as |damageType|}}
+                                {{#each damageTypesDR as |damageType|}}
                                     {{#if (includes ../action.damageReduction.bypass.types damageType.id)}}
                                     <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
                                         <span>{{damageType.label}} (Inherited)</span>
@@ -201,18 +225,26 @@
                             {{else}}
                                 <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
                             {{/if}}
+                            {{/if}}
                         {{else}}
-                            {{#if action.damageReduction.bypass.types.length}}
-                                {{#each damageTypes as |damageType|}}
-                                    {{#if (includes ../action.damageReduction.bypass.types damageType.id)}}
-                                    <div class="multiselect-tag" data-value="{{damageType.id}}">
-                                        <span>{{damageType.label}}</span>
-                                        <i class="fas fa-times remove-tag"></i>
-                                    </div>
-                                    {{/if}}
-                                {{/each}}
+                            {{#if actionBypassDRShowAllTag}}
+                                <div class="multiselect-tag" data-value="all">
+                                    <span>All</span>
+                                    <i class="fas fa-times remove-tag"></i>
+                                </div>
                             {{else}}
-                                <span class="multiselect-placeholder">None Selected</span>
+                                {{#if action.damageReduction.bypass.types.length}}
+                                    {{#each damageTypesDR as |damageType|}}
+                                        {{#if (includes ../action.damageReduction.bypass.types damageType.id)}}
+                                        <div class="multiselect-tag" data-value="{{damageType.id}}">
+                                            <span>{{damageType.label}}</span>
+                                            <i class="fas fa-times remove-tag"></i>
+                                        </div>
+                                        {{/if}}
+                                    {{/each}}
+                                {{else}}
+                                    <span class="multiselect-placeholder">None Selected</span>
+                                {{/if}}
                             {{/if}}
                         {{/if}}
                     </div>
@@ -224,7 +256,7 @@
                             <input type="text" class="multiselect-search-input" placeholder="Search...">
                         </div>
                         <div class="multiselect-list">
-                            {{#each damageTypes}}
+                            {{#each damageTypesDR}}
                             <label class="multiselect-option {{#if (and ../action.damageReduction.bypass.isInheritedTypes (includes ../action.damageReduction.bypass.types this.id))}}inherited-item{{/if}}">
                                 <input type="checkbox" class="damage-type-checkbox" data-category="damageReduction" data-scope="action" data-value="{{this.id}}" {{#if (includes ../action.damageReduction.bypass.types this.id)}}checked class="is-selected"{{/if}}>
                                 <span>{{this.label}}</span>
@@ -294,8 +326,13 @@
                             <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassImmunity"}}</div>
                             <div class="multiselect-tags-container" data-inherited="{{#if this.immunity.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
                                 {{#if this.immunity.bypass.isInheritedTypes}}
+                                    {{#if (includes this.immunity.bypass.types "all")}}
+                                        <div class="multiselect-tag inherited-tag" data-value="all" data-inherited="true">
+                                            <span>All (Inherited)</span>
+                                        </div>
+                                    {{else}}
                                     {{#if this.immunity.bypass.types.length}}
-                                        {{#each ../damageTypes as |damageType|}}
+                                        {{#each ../damageTypesImmunity as |damageType|}}
                                             {{#if (includes ../this.immunity.bypass.types damageType.id)}}
                                             <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
                                                 <span>{{damageType.label}} (Inherited)</span>
@@ -305,9 +342,17 @@
                                     {{else}}
                                         <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
                                     {{/if}}
+                                    {{/if}}
                                 {{else}}
+                                    {{!-- Show only All tag if all types are selected --}}
+                                    {{#if (and (includes this.immunity.bypass.types "all") (eq this.immunity.bypass.types.length ../damageTypesImmunity.length))}}
+                                        <div class="multiselect-tag" data-value="all">
+                                            <span>All</span>
+                                            <i class="fas fa-times remove-tag"></i>
+                                        </div>
+                                    {{else}}
                                     {{#if this.immunity.bypass.types.length}}
-                                        {{#each ../damageTypes as |damageType|}}
+                                        {{#each ../damageTypesImmunity as |damageType|}}
                                             {{#if (includes ../this.immunity.bypass.types damageType.id)}}
                                             <div class="multiselect-tag" data-value="{{damageType.id}}">
                                                 <span>{{damageType.label}}</span>
@@ -317,6 +362,7 @@
                                         {{/each}}
                                     {{else}}
                                         <span class="multiselect-placeholder">None Selected</span>
+                                    {{/if}}
                                     {{/if}}
                                 {{/if}}
                             </div>
@@ -328,7 +374,7 @@
                                     <input type="text" class="multiselect-search-input" placeholder="Search...">
                                 </div>
                                 <div class="multiselect-list">
-                                    {{#each ../damageTypes}}
+                                    {{#each ../damageTypesImmunity}}
                                     <label class="multiselect-option {{#if (and ../../this.immunity.bypass.isInheritedTypes (includes ../../action.immunity.bypass.types this.id))}}inherited-item{{/if}}">
                                         <input type="checkbox" class="damage-type-checkbox" data-category="immunity" data-attack-key="{{../key}}" data-value="{{this.id}}"
                                             {{#if ../../this.immunity.bypass.isInheritedTypes}}
@@ -349,8 +395,13 @@
                             <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassResistance"}}</div>
                             <div class="multiselect-tags-container" data-inherited="{{#if this.resistance.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
                                 {{#if this.resistance.bypass.isInheritedTypes}}
+                                    {{#if (includes this.resistance.bypass.types "all")}}
+                                        <div class="multiselect-tag inherited-tag" data-value="all" data-inherited="true">
+                                            <span>All (Inherited)</span>
+                                        </div>
+                                    {{else}}
                                     {{#if this.resistance.bypass.types.length}}
-                                        {{#each ../damageTypes as |damageType|}}
+                                        {{#each ../damageTypesResistance as |damageType|}}
                                             {{#if (includes ../this.resistance.bypass.types damageType.id)}}
                                             <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
                                                 <span>{{damageType.label}} (Inherited)</span>
@@ -360,9 +411,16 @@
                                     {{else}}
                                         <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
                                     {{/if}}
+                                    {{/if}}
                                 {{else}}
+                                    {{#if (and (includes this.resistance.bypass.types "all") (eq this.resistance.bypass.types.length ../damageTypesResistance.length))}}
+                                        <div class="multiselect-tag" data-value="all">
+                                            <span>All</span>
+                                            <i class="fas fa-times remove-tag"></i>
+                                        </div>
+                                    {{else}}
                                     {{#if this.resistance.bypass.types.length}}
-                                        {{#each ../damageTypes as |damageType|}}
+                                        {{#each ../damageTypesResistance as |damageType|}}
                                             {{#if (includes ../this.resistance.bypass.types damageType.id)}}
                                             <div class="multiselect-tag" data-value="{{damageType.id}}">
                                                 <span>{{damageType.label}}</span>
@@ -372,6 +430,7 @@
                                         {{/each}}
                                     {{else}}
                                         <span class="multiselect-placeholder">None Selected</span>
+                                    {{/if}}
                                     {{/if}}
                                 {{/if}}
                             </div>
@@ -383,7 +442,7 @@
                                     <input type="text" class="multiselect-search-input" placeholder="Search...">
                                 </div>
                                 <div class="multiselect-list">
-                                    {{#each ../damageTypes}}
+                                    {{#each ../damageTypesResistance}}
                                     <label class="multiselect-option {{#if (and ../../this.resistance.bypass.isInheritedTypes (includes ../../action.resistance.bypass.types this.id))}}inherited-item{{/if}}">
                                         <input type="checkbox" class="damage-type-checkbox" data-category="resistance" data-attack-key="{{../key}}" data-value="{{this.id}}"
                                             {{#if ../../this.resistance.bypass.isInheritedTypes}}
@@ -404,8 +463,13 @@
                             <div class="multiselect-header">{{localize "PF1.AutomateDamage.Settings.BypassDR"}}</div>
                             <div class="multiselect-tags-container" data-inherited="{{#if this.damageReduction.bypass.isInheritedTypes}}true{{else}}false{{/if}}">
                                 {{#if this.damageReduction.bypass.isInheritedTypes}}
+                                    {{#if (includes this.damageReduction.bypass.types "all")}}
+                                        <div class="multiselect-tag inherited-tag" data-value="all" data-inherited="true">
+                                            <span>All (Inherited)</span>
+                                        </div>
+                                    {{else}}
                                     {{#if this.damageReduction.bypass.types.length}}
-                                        {{#each ../damageTypes as |damageType|}}
+                                        {{#each ../damageTypesDR as |damageType|}}
                                             {{#if (includes ../this.damageReduction.bypass.types damageType.id)}}
                                             <div class="multiselect-tag inherited-tag" data-value="{{damageType.id}}" data-inherited="true">
                                                 <span>{{damageType.label}} (Inherited)</span>
@@ -415,9 +479,16 @@
                                     {{else}}
                                         <span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>
                                     {{/if}}
+                                    {{/if}}
                                 {{else}}
+                                    {{#if (and (includes this.damageReduction.bypass.types "all") (eq this.damageReduction.bypass.types.length ../damageTypesDR.length))}}
+                                        <div class="multiselect-tag" data-value="all">
+                                            <span>All</span>
+                                            <i class="fas fa-times remove-tag"></i>
+                                        </div>
+                                    {{else}}
                                     {{#if this.damageReduction.bypass.types.length}}
-                                        {{#each ../damageTypes as |damageType|}}
+                                        {{#each ../damageTypesDR as |damageType|}}
                                             {{#if (includes ../this.damageReduction.bypass.types damageType.id)}}
                                             <div class="multiselect-tag" data-value="{{damageType.id}}">
                                                 <span>{{damageType.label}}</span>
@@ -427,6 +498,7 @@
                                         {{/each}}
                                     {{else}}
                                         <span class="multiselect-placeholder">None Selected</span>
+                                    {{/if}}
                                     {{/if}}
                                 {{/if}}
                             </div>
@@ -438,7 +510,7 @@
                                     <input type="text" class="multiselect-search-input" placeholder="Search...">
                                 </div>
                                 <div class="multiselect-list">
-                                    {{#each ../damageTypes}}
+                                    {{#each ../damageTypesDR}}
                                     <label class="multiselect-option {{#if (and ../../this.damageReduction.bypass.isInheritedTypes (includes ../../action.damageReduction.bypass.types this.id))}}inherited-item{{/if}}">
                                         <input type="checkbox" class="damage-type-checkbox" data-category="damageReduction" data-attack-key="{{../key}}" data-value="{{this.id}}"
                                             {{#if ../../this.damageReduction.bypass.isInheritedTypes}}

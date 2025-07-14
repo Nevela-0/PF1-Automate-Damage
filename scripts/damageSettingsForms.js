@@ -12,31 +12,102 @@ Handlebars.registerHelper('array', function(...args) {
     return args.slice(0, -1);
 });
 
-function getDamageTypes() {
+export function getDamageTypes(category = "immunity") {
     const systemDamageTypes = pf1.registry.damageTypes
         .filter(dt => dt.id !== "untyped")
         .map(dt => ({
             id: dt.id,
-            label: dt.name
+            label: dt.name,
+            isPhysical: !!dt.isPhysical,
+            isEnergy: !!dt.isEnergy,
+            isUtility: !!dt.isUtility,
+            category: dt.category || "misc"
         }));
 
-    const materials = pf1.registry.materials
+    const materialMap = new Map();
+    pf1.registry.materials
         .filter(m => m.dr === true)
-        .map(m => ({
-            id: m.id,
-            label: m.name
-        }));
+        .forEach(m => {
+            if (m.treatedAs) {
+                const treated = pf1.registry.materials.find(mat => mat.id === m.treatedAs);
+                if (treated && !materialMap.has(treated.id)) {
+                    materialMap.set(treated.id, {
+                        id: treated.id,
+                        label: treated.shortName || treated.name,
+                        isMaterial: true
+                    });
+                }
+            } else if (!materialMap.has(m.id)) {
+                materialMap.set(m.id, {
+                    id: m.id,
+                    label: m.shortName || m.name,
+                    isMaterial: true
+                });
+            }
+        });
+    const materials = Array.from(materialMap.values());
 
     const alignments = Object.entries(pf1.config.damageResistances).map(([id, name]) => ({
         id,
-        label: name
+        label: name,
+        isAlignment: true
     }));
 
-    return [
-        ...systemDamageTypes,
-        ...materials,
-        ...alignments
-    ].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+    const customTypes = systemDamageTypes.filter(dt => !["misc", "energy", "physical"].includes(dt.category));
+
+    let filteredTypes = [];
+    if (category === "immunity") {
+        filteredTypes = [
+            ...systemDamageTypes,
+            ...materials,
+            ...alignments
+        ];
+    } else if (category === "resistance") {
+        const energyOrUtility = systemDamageTypes.filter(dt => dt.isEnergy || dt.isUtility);
+        filteredTypes = [
+            ...energyOrUtility,
+            ...customTypes
+        ];
+    } else if (category === "damageReduction") {
+        const physical = systemDamageTypes.filter(dt => dt.isPhysical);
+        filteredTypes = [
+            ...physical,
+            ...customTypes,
+            ...materials,
+            ...alignments
+        ];
+    } else {
+        filteredTypes = [...systemDamageTypes];
+    }
+
+    const seen = new Set();
+    let uniqueTypes = filteredTypes.filter(dt => {
+        if (seen.has(dt.id)) return false;
+        seen.add(dt.id);
+        return true;
+    });
+
+    const specialOptions = [{ id: "all", label: "All" }];
+    if (category === "damageReduction") {
+        specialOptions.push({ id: "dr-none", label: "DR/-" });
+    }
+    const sortedTypes = uniqueTypes
+        .filter(dt => dt.id !== "all" && dt.id !== "dr-none")
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+    let result = [];
+    if (category === "damageReduction") {
+        result = [
+            specialOptions[0],
+            specialOptions[1],
+            ...sortedTypes
+        ];
+    } else {
+        result = [
+            specialOptions[0],
+            ...sortedTypes
+        ];
+    }
+    return result;
 }
 
 /**
@@ -364,12 +435,10 @@ async function setActionSetting(item, actionId, settingPath, value, isInherited 
         const attackKey = parts[1];
         
         if (!attackKey || attackKey === 'undefined' || attackKey === 'null') {
-            console.warn(`Skipping setting path with invalid attack key: ${settingPath}`);
             return;
         }
         
         if (parts.length < 3) {
-            console.warn(`Invalid attack setting path: ${settingPath}`);
             return;
         }
         
@@ -538,13 +607,29 @@ class GlobalDamageSettingsForm extends FormApplication {
             bypassImmunityList: globalSettings.immunity?.bypass?.types || [],
             bypassResistanceList: globalSettings.resistance?.bypass?.types || [],
             bypassDRList: globalSettings.damageReduction?.bypass?.types || [],
-            damageTypes: getDamageTypes()
+            damageTypesImmunity: getDamageTypes('immunity'),
+            damageTypesResistance: getDamageTypes('resistance'),
+            damageTypesDR: getDamageTypes('damageReduction')
         };
+
+        const allImmunityIds = data.damageTypesImmunity.map(dt => dt.id);
+        data.bypassImmunityShowAllTag =
+            data.bypassImmunityList.includes('all') &&
+            data.bypassImmunityList.length === allImmunityIds.length;
+        const allResistanceIds = data.damageTypesResistance.map(dt => dt.id);
+        data.bypassResistanceShowAllTag =
+            data.bypassResistanceList.includes('all') &&
+            data.bypassResistanceList.length === allResistanceIds.length;
+        const allDRIds = data.damageTypesDR.map(dt => dt.id);
+        data.bypassDRShowAllTag =
+            data.bypassDRList.includes('all') &&
+            data.bypassDRList.length === allDRIds.length;
         
         return data;
     }
 
     async _updateObject(event, formData) {
+        await initializeAutomateDamageFlags(this.item);
         const processedData = foundry.utils.expandObject(formData);
         
         ['bypassImmunityList', 'bypassResistanceList', 'bypassDRList'].forEach(key => {
@@ -1080,13 +1165,14 @@ class GlobalDamageSettingsForm extends FormApplication {
             const value = tag.data('value');
             const container = tag.closest('.multiselect-container');
             const dropdown = container.find('.multiselect-dropdown');
-            
-            container.find(`input[value="${value}"]`).prop('checked', false);
-            
+            if (value === 'all') {
+                container.find('input[type="checkbox"]').prop('checked', false);
+                container.find('.multiselect-option').removeClass('selected');
+            } else {
+                container.find(`input[value="${value}"]`).prop('checked', false);
+            }
             tag.remove();
-            
             dropdown.find(`.multiselect-option input[value="${value}"]`).closest('.multiselect-option').removeClass('selected');
-            
             const tagsContainer = container.find('.multiselect-tags-container');
             if (tagsContainer.find('.multiselect-tag').length === 0) {
                 tagsContainer.html('<span class="multiselect-placeholder">None Selected</span>');
@@ -1102,26 +1188,57 @@ class GlobalDamageSettingsForm extends FormApplication {
             const value = checkbox.attr('data-value') || optionElement.attr('data-value') || optionElement.find('span').text().toLowerCase();
             const label = option.find('span').text();
             const isChecked = $(this).prop('checked');
-            
-            option.toggleClass('selected', isChecked);
-            
-            if (isChecked) {
-                tagsContainer.find('.multiselect-placeholder').remove();
-                
-                const tag = $(
-                    `<div class="multiselect-tag" data-value="${value}">
-                        <span>${label}</span>
-                        <i class="fas fa-times remove-tag"></i>
-                    </div>`
-                );
-                tagsContainer.append(tag);
+            const allCheckbox = container.find('input[type="checkbox"][value="all"]');
+            const allOption = container.find('.multiselect-option input[value="all"]').closest('.multiselect-option');
+            const allTag = `<div class="multiselect-tag" data-value="all"><span>All</span><i class="fas fa-times remove-tag"></i></div>`;
+            const checkboxes = container.find('.multiselect-option input[type="checkbox"]');
+            const nonAllCheckboxes = checkboxes.filter(function() { return $(this).val() !== 'all'; });
+            if (value === 'all') {
+                if (isChecked) {
+                    checkboxes.prop('checked', true);
+                    checkboxes.closest('.multiselect-option').addClass('selected');
+                    tagsContainer.empty().append(allTag);
+                } else {
+                    checkboxes.prop('checked', false);
+                    checkboxes.closest('.multiselect-option').removeClass('selected');
+                    tagsContainer.empty().html('<span class="multiselect-placeholder">None Selected</span>');
+                }
             } else {
-                tagsContainer.find(`.multiselect-tag[data-value="${value}"]`).remove();
-                
-                if (tagsContainer.find('.multiselect-tag').length === 0) {
-                    tagsContainer.html('<span class="multiselect-placeholder">None Selected</span>');
+                if (!isChecked && allCheckbox.prop('checked')) {
+                    allCheckbox.prop('checked', false);
+                    allOption.removeClass('selected');
+                    tagsContainer.find('.multiselect-tag[data-value="all"]').remove();
+                }
+                if (nonAllCheckboxes.length > 0 && nonAllCheckboxes.filter(':checked').length === nonAllCheckboxes.length) {
+                    allCheckbox.prop('checked', true);
+                    allOption.addClass('selected');
+                    tagsContainer.empty().append(allTag);
+                } else {
+                    tagsContainer.find('.multiselect-tag[data-value="all"]').remove();
+                    if (isChecked) {
+                        tagsContainer.find('.multiselect-placeholder').remove();
+                        const tag = $(`<div class="multiselect-tag" data-value="${value}"><span>${label}</span><i class="fas fa-times remove-tag"></i></div>`);
+                        tagsContainer.append(tag);
+                    } else {
+                        tagsContainer.find(`.multiselect-tag[data-value="${value}"]`).remove();
+                        if (tagsContainer.find('.multiselect-tag').length === 0) {
+                            tagsContainer.html('<span class="multiselect-placeholder">None Selected</span>');
+                        }
+                    }
                 }
             }
+            let selected = checkboxes.filter(':checked').map(function() { return $(this).attr('data-value'); }).get();
+            const hiddenInputsContainer = container.find(hiddenInputsClass);
+            hiddenInputsContainer.empty();
+            selected.forEach(typeId => {
+                let inputName;
+                if (attackKey) {
+                    inputName = `attacks.${attackKey}.${category}.bypass.types`;
+                } else {
+                    inputName = `${category}.bypass.types`;
+                }
+                hiddenInputsContainer.append(`<input type="hidden" name="${inputName}" value="${typeId}">`);
+            });
         });
     }
 
@@ -1347,7 +1464,9 @@ class ActionDamageSettingsForm extends FormApplication {
             attack.damageReduction.bypass.isInheritedTypes
         );
         
-        const damageTypes = getDamageTypes();
+        const damageTypesImmunity = getDamageTypes('immunity');
+        const damageTypesResistance = getDamageTypes('resistance');
+        const damageTypesDR = getDamageTypes('damageReduction');
         
         const itemActionSettings = this.item.getFlag(AutomateDamageModule.MODULE.ID, 'itemActionSettings') || { actions: [] };
         const actionEntry = itemActionSettings.actions?.find(a => a.id === this.actionId) || {
@@ -1402,7 +1521,9 @@ class ActionDamageSettingsForm extends FormApplication {
             
             attacks: attackSettings,
             
-            damageTypes: damageTypes,
+            damageTypesImmunity: damageTypesImmunity,
+            damageTypesResistance: damageTypesResistance,
+            damageTypesDR: damageTypesDR,
             
             helpers: {
                 includes: function(array, value) {
@@ -1412,12 +1533,39 @@ class ActionDamageSettingsForm extends FormApplication {
             hasNoActiveAttackSettings,
         };
         
+        const allImmunityIds = damageTypesImmunity.map(dt => dt.id);
+        data.actionBypassImmunityShowAllTag =
+            data.action.immunity.bypass.types.includes('all') &&
+            data.action.immunity.bypass.types.length === allImmunityIds.length;
+        const allResistanceIds = damageTypesResistance.map(dt => dt.id);
+        data.actionBypassResistanceShowAllTag =
+            data.action.resistance.bypass.types.includes('all') &&
+            data.action.resistance.bypass.types.length === allResistanceIds.length;
+        const allDRIds = damageTypesDR.map(dt => dt.id);
+        data.actionBypassDRShowAllTag =
+            data.action.damageReduction.bypass.types.includes('all') &&
+            data.action.damageReduction.bypass.types.length === allDRIds.length;
+
+        data.actionBypassImmunityShowAllTagInherited =
+            data.action.immunity.bypass.isInheritedTypes &&
+            data.action.immunity.bypass.types.includes('all') &&
+            data.action.immunity.bypass.types.length === allImmunityIds.length;
+        data.actionBypassResistanceShowAllTagInherited =
+            data.action.resistance.bypass.isInheritedTypes &&
+            data.action.resistance.bypass.types.includes('all') &&
+            data.action.resistance.bypass.types.length === allResistanceIds.length;
+        data.actionBypassDRShowAllTagInherited =
+            data.action.damageReduction.bypass.isInheritedTypes &&
+            data.action.damageReduction.bypass.types.includes('all') &&
+            data.action.damageReduction.bypass.types.length === allDRIds.length;
+        
         window.actionData = data;
         
         return data;
     }
     
     async _updateObject(event, formData) {
+        await initializeAutomateDamageFlags(this.item);
         const data = foundry.utils.expandObject(formData);
         
         const globalSettings = this.item.getFlag(AutomateDamageModule.MODULE.ID, 'globalItemSettings') || {};
@@ -1652,9 +1800,9 @@ class ActionDamageSettingsForm extends FormApplication {
                                 attackBypassDR, false);
                             await setActionSetting(this.item, this.actionId, `attacks.${attackKey}.damageReduction.bypass.types`, 
                                 attackBypassDRList, false);
-                        }
-                    }
                 }
+            }
+        }
         
                 action.attacks = action.attacks.filter(attack => {
                     return attack.name && attack.name !== 'undefined' && attack.name !== 'null';
@@ -1703,8 +1851,7 @@ class ActionDamageSettingsForm extends FormApplication {
     _getSubmitData(updateData = null) {
         if (this.form && this.updateHiddenInputs) {
             this.updateHiddenInputs($(this.form));
-            $(this.form).find('input[type="hidden"]').each(function() {
-            });
+            $(this.form).find('input[type="hidden"]').each(function() {});
         }
         return super._getSubmitData(updateData);
     }
@@ -1758,6 +1905,10 @@ class ActionDamageSettingsForm extends FormApplication {
         setupTriStateCheckboxes.call(this, html, '.attack-section .tri-state-checkbox[data-name$=".hardness.ignore.enabled"]', this.globalIgnoreHardnessValue);
 
         function setupMultiSelect(html, containerSelector, category, globalListKey, damageTypes) {
+            const labelForId = id => {
+                if (id === 'dr-none') return 'DR/-';
+                return (damageTypes.find(dt => dt.id === id) || {}).label || id;
+            };
             html.find(containerSelector).each(function(index) {
                 const container = $(this);
                 const tagsContainer = container.find('.multiselect-tags-container');
@@ -1825,42 +1976,67 @@ class ActionDamageSettingsForm extends FormApplication {
                         tagsContainer.attr('data-inherited', 'false');
                         tagsContainer.empty();
                     }
-                    let selected = optionCheckboxes.filter(':checked').map(function() { return $(this).attr('data-value'); }).get();
-                    const labelForId = id => (damageTypes.find(dt => dt.id === id) || {}).label || id;
-                    selected = selected.slice().sort((a, b) => labelForId(a).localeCompare(labelForId(b), undefined, { sensitivity: 'base' }));
-                    tagsContainer.empty();
-                    if (selected.length === 0) {
-                        tagsContainer.html('<span class="multiselect-placeholder">None Selected</span>');
+                    const allCheckbox = optionCheckboxes.filter('[value="all"]');
+                    const allOption = optionCheckboxes.filter('[value="all"]').closest('.multiselect-option');
+                    const allTag = `<div class="multiselect-tag" data-value="all"><span>All</span><i class="fas fa-times remove-tag"></i></div>`;
+                    const nonAllCheckboxes = optionCheckboxes.filter(function() { return $(this).val() !== 'all'; });
+                    const checkbox = $(this);
+                    const value = checkbox.attr('data-value') || checkbox.val();
+                    const label = optionCheckboxes.filter(`[data-value="${value}"]`).closest('.multiselect-option').find('span').text() || value;
+                    const isChecked = checkbox.prop('checked');
+                    if (value === 'all') {
+                        if (isChecked) {
+                            optionCheckboxes.prop('checked', true);
+                            optionCheckboxes.closest('.multiselect-option').addClass('selected');
+                            tagsContainer.empty().append(allTag);
+                        } else {
+                            optionCheckboxes.prop('checked', false);
+                            optionCheckboxes.closest('.multiselect-option').removeClass('selected');
+                            tagsContainer.empty().html('<span class="multiselect-placeholder">None Selected</span>');
+                        }
                     } else {
-                        selected.forEach(typeId => {
-                            const label = labelForId(typeId);
-                            const tag = $(`<div class="multiselect-tag" data-value="${typeId}"><span>${label}</span><i class="fas fa-times remove-tag"></i></div>`);
-                            tagsContainer.append(tag);
-                        });
+                        if (!isChecked && allCheckbox.prop('checked')) {
+                            allCheckbox.prop('checked', false);
+                            allOption.removeClass('selected');
+                            tagsContainer.find('.multiselect-tag[data-value="all"]').remove();
+                        }
+                        if (nonAllCheckboxes.length > 0 && nonAllCheckboxes.filter(':checked').length === nonAllCheckboxes.length) {
+                            allCheckbox.prop('checked', true);
+                            allOption.addClass('selected');
+                            tagsContainer.empty().append(allTag);
+                        } else {
+                            tagsContainer.find('.multiselect-tag[data-value="all"]').remove();
+                            if (isChecked) {
+                                tagsContainer.find('.multiselect-placeholder').remove();
+                                const tag = $(`<div class="multiselect-tag" data-value="${value}"><span>${label}</span><i class="fas fa-times remove-tag"></i></div>`);
+                                tagsContainer.append(tag);
+                            } else {
+                                tagsContainer.find(`.multiselect-tag[data-value="${value}"]`).remove();
+                                if (tagsContainer.find('.multiselect-tag').length === 0) {
+                                    tagsContainer.html('<span class="multiselect-placeholder">None Selected</span>');
+                                }
+                            }
+                        }
                     }
-                    const enabled = selected.length > 0;
-                    if (enabledInput.length) enabledInput.val(enabled ? 'true' : 'false');
+                    let selected = optionCheckboxes.filter(':checked').map(function() { return $(this).attr('data-value'); }).get();
                     const hiddenInputsContainer = container.find(hiddenInputsClass);
                     hiddenInputsContainer.empty();
-                    selected.forEach(typeId => {
-                        let inputName;
-                        if (attackKey) {
-                            inputName = `attacks.${attackKey}.${category}.bypass.types`;
-                        } else {
-                            inputName = `${category}.bypass.types`;
-                        }
-                        hiddenInputsContainer.append(`<input type=\"hidden\" name=\"${inputName}\" value=\"${typeId}\">`);
-                    });
                     if (arraysMatchUnordered(selected, globalList)) {
                         tagsContainer.attr('data-inherited', 'true');
                         tagsContainer.empty();
                         hiddenInputsContainer.empty();
                         if (globalList.length > 0) {
                             for (const typeId of globalList) {
-                                const damageType = (damageTypes || []).find(dt => dt.id === typeId);
-                                const label = damageType ? damageType.label : typeId;
+                                const label = labelForId(typeId);
                                 const tag = $(`<div class="multiselect-tag inherited-tag" data-value="${typeId}" data-inherited="true"><span>${label} (Inherited)</span></div>`);
                                 tagsContainer.append(tag);
+                                let inputName;
+                                if (attackKey) {
+                                    inputName = `attacks.${attackKey}.${category}.bypass.types`;
+                                } else {
+                                    inputName = `${category}.bypass.types`;
+                                }
+                                hiddenInputsContainer.append(`<input type="hidden" name="${inputName}" value="${typeId}">`);
                             }
                         } else {
                             tagsContainer.html('<span class="multiselect-placeholder inherited-tag">None Selected (Inherited)</span>');
@@ -1886,12 +2062,41 @@ class ActionDamageSettingsForm extends FormApplication {
                             html.find(`input[name="${category}.inherit"]`).val('false');
                         }
                     }
+                    selected.forEach(typeId => {
+                        let inputName;
+                        if (attackKey) {
+                            inputName = `attacks.${attackKey}.${category}.bypass.types`;
+                        } else {
+                            inputName = `${category}.bypass.types`;
+                        }
+                        hiddenInputsContainer.append(`<input type="hidden" name="${inputName}" value="${typeId}">`);
+                    });
+                    tagsContainer.empty();
+                    if (selected.includes('all')) {
+                        tagsContainer.append('<div class="multiselect-tag" data-value="all"><span>All</span><i class="fas fa-times remove-tag"></i></div>');
+                    } else if (selected.length === 0) {
+                        tagsContainer.html('<span class="multiselect-placeholder">None Selected</span>');
+                    } else {
+                        const sortedSelected = selected.slice().sort((a, b) => labelForId(a).localeCompare(labelForId(b), undefined, { sensitivity: 'base' }));
+                        sortedSelected.forEach(typeId => {
+                            const label = labelForId(typeId);
+                            const tag = $(`<div class="multiselect-tag" data-value="${typeId}"><span>${label}</span><i class="fas fa-times remove-tag"></i></div>`);
+                            tagsContainer.append(tag);
+                        });
+                    }
+                    const enabled = sortedSelected.length > 0;
+                    if (enabledInput.length) enabledInput.val(enabled ? 'true' : 'false');
                 });
                 container.on('click', '.remove-tag', function(event) {
                     event.stopPropagation();
                     const tag = $(this).closest('.multiselect-tag');
                     const value = tag.data('value');
-                    optionCheckboxes.filter(`[data-value="${value}"]`).prop('checked', false).trigger('change');
+                    if (value === 'all') {
+                        optionCheckboxes.prop('checked', false).trigger('change');
+                        optionCheckboxes.closest('.multiselect-option').removeClass('selected');
+                    } else {
+                        optionCheckboxes.filter(`[data-value="${value}"]`).prop('checked', false).trigger('change');
+                    }
                     tag.remove();
                     let selected = optionCheckboxes.filter(':checked').map(function() { return $(this).attr('data-value'); }).get();
                     const labelForId = id => (damageTypes.find(dt => dt.id === id) || {}).label || id;
@@ -2056,3 +2261,144 @@ class AutomateDamageUI {
 Hooks.once('ready', () => {
     AutomateDamageUI.init();
 }); 
+
+const DEFAULT_HARDNESS = {
+    bypass: { enabled: false, inherit: true },
+    ignore: { enabled: false, inherit: true, value: 0 }
+};
+const DEFAULT_IMMUNITY = {
+    inherit: true,
+    bypass: { enabled: false, types: [] }
+};
+const DEFAULT_RESISTANCE = {
+    inherit: true,
+    bypass: { enabled: false, types: [] }
+};
+const DEFAULT_DAMAGE_REDUCTION = {
+    inherit: true,
+    bypass: { enabled: false, types: [] }
+};
+function normalizeHardness(hardness = {}, isGlobal = false) {
+    if (isGlobal) {
+        return {
+            bypass: typeof hardness?.bypass === 'boolean' ? hardness.bypass : false,
+            ignore: {
+                enabled: typeof hardness?.ignore?.enabled === 'boolean'
+                    ? hardness.ignore.enabled
+                    : (typeof hardness?.ignore === 'boolean' ? hardness.ignore : false),
+                value: typeof hardness?.ignore?.value === 'number' ? hardness.ignore.value : 0
+            }
+        };
+    } else {
+        return {
+            bypass: {
+                enabled: typeof hardness?.bypass?.enabled === 'boolean' ? hardness.bypass.enabled : false,
+                inherit: typeof hardness?.bypass?.inherit === 'boolean' ? hardness.bypass.inherit : true
+            },
+            ignore: {
+                enabled: typeof hardness?.ignore?.enabled === 'boolean' ? hardness.ignore.enabled : false,
+                inherit: typeof hardness?.ignore?.inherit === 'boolean' ? hardness.ignore.inherit : true,
+                value: typeof hardness?.ignore?.value === 'number' ? hardness.ignore.value : 0
+            }
+        };
+    }
+}
+function normalizeImmunity(immunity = {}, isGlobal = false) {
+    return {
+        ...(isGlobal ? {} : { inherit: typeof immunity?.inherit === 'boolean' ? immunity.inherit : true }),
+        bypass: {
+            enabled: typeof immunity?.bypass?.enabled === 'boolean' ? immunity.bypass.enabled : false,
+            types: Array.isArray(immunity?.bypass?.types) ? immunity.bypass.types : []
+        }
+    };
+}
+function normalizeResistance(resistance = {}, isGlobal = false) {
+    return {
+        ...(isGlobal ? {} : { inherit: typeof resistance?.inherit === 'boolean' ? resistance.inherit : true }),
+        bypass: {
+            enabled: typeof resistance?.bypass?.enabled === 'boolean' ? resistance.bypass.enabled : false,
+            types: Array.isArray(resistance?.bypass?.types) ? resistance.bypass.types : []
+        }
+    };
+}
+function normalizeDamageReduction(dr = {}, isGlobal = false) {
+    return {
+        ...(isGlobal ? {} : { inherit: typeof dr?.inherit === 'boolean' ? dr.inherit : true }),
+        bypass: {
+            enabled: typeof dr?.bypass?.enabled === 'boolean' ? dr.bypass.enabled : false,
+            types: Array.isArray(dr?.bypass?.types) ? dr.bypass.types : []
+        }
+    };
+}
+function normalizeAttack(attack = {}) {
+    return {
+        name: typeof attack.name === 'string' ? attack.name : '',
+        key: typeof attack.key === 'string' ? attack.key : '',
+        hardness: normalizeHardness(attack.hardness),
+        immunity: normalizeImmunity(attack.immunity),
+        resistance: normalizeResistance(attack.resistance),
+        damageReduction: normalizeDamageReduction(attack.damageReduction)
+    };
+}
+function normalizeAction(action = {}) {
+    return {
+        id: typeof action.id === 'string' ? action.id : '',
+        name: typeof action.name === 'string' ? action.name : '',
+        hardness: normalizeHardness(action.hardness),
+        immunity: normalizeImmunity(action.immunity),
+        resistance: normalizeResistance(action.resistance),
+        damageReduction: normalizeDamageReduction(action.damageReduction),
+        attacks: Array.isArray(action.attacks) ? action.attacks.map(normalizeAttack) : []
+    };
+}
+
+async function initializeAutomateDamageFlags(item) {
+    let globalItemSettings = item.getFlag(AutomateDamageModule.MODULE.ID, 'globalItemSettings') || {};
+    globalItemSettings = {
+        hardness: normalizeHardness(globalItemSettings.hardness, true),
+        immunity: normalizeImmunity(globalItemSettings.immunity, true),
+        resistance: normalizeResistance(globalItemSettings.resistance, true),
+        damageReduction: normalizeDamageReduction(globalItemSettings.damageReduction, true)
+    };
+    await item.setFlag(AutomateDamageModule.MODULE.ID, 'globalItemSettings', globalItemSettings);
+
+    let itemActionSettings = item.getFlag(AutomateDamageModule.MODULE.ID, 'itemActionSettings');
+    let actions = [];
+    if (itemActionSettings && Array.isArray(itemActionSettings.actions)) {
+        actions = itemActionSettings.actions.map(normalizeAction);
+    } else if (item.actions && item.actions.size > 0) {
+        for (const systemAction of item.actions) {
+            const newAction = {
+                id: systemAction.id,
+                name: systemAction.name || `Action ${systemAction.id}`,
+                hardness: {},
+                immunity: {},
+                resistance: {},
+                damageReduction: {},
+                attacks: []
+            };
+            if (systemAction.getAttacks) {
+                const attacks = systemAction.getAttacks();
+                if (attacks && attacks.length > 0) {
+                    for (const attack of attacks) {
+                        const attackName = attack.label || `Attack`;
+                        const attackKey = attackName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+                        newAction.attacks.push({ name: attackName, key: attackKey });
+                    }
+                }
+            }
+            const hasteKey = "haste";
+            const rapidShotKey = "rapid_shot";
+            const existingAttackKeys = newAction.attacks.map(a => a.key || a.name);
+            if (!existingAttackKeys.includes(hasteKey)) {
+                newAction.attacks.push({ name: hasteKey, key: hasteKey });
+            }
+            if (!existingAttackKeys.includes(rapidShotKey)) {
+                newAction.attacks.push({ name: rapidShotKey, key: rapidShotKey });
+            }
+            actions.push(normalizeAction(newAction));
+        }
+    }
+    itemActionSettings = { actions };
+    await item.setFlag(AutomateDamageModule.MODULE.ID, 'itemActionSettings', itemActionSettings);
+} 
