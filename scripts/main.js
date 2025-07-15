@@ -512,6 +512,7 @@ function damageReductionCalculation (attackDamage, damageReductions, damageTypes
             let ammoElement = doc.querySelector('[data-ammo-id]');
             let ammoId = ammoElement ? ammoElement.getAttribute('data-ammo-id') : null;
             const ammoItem = itemSource.parent.items.get(ammoId);
+            const api = game.modules.get("ckl-roll-bonuses")?.api;
             if(api) {
                 const dataActionId = itemOptionsForSort.actionId;
                 const action = itemSource?.actions?.get(dataActionId);
