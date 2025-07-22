@@ -1,32 +1,73 @@
 import { AutomateDamageModule } from './config.js';
 export function onRenderChatMessage(html) {
-    const messages = html[0]?.querySelectorAll('div.chat-attack');
+    const root = (typeof jQuery !== 'undefined' && html instanceof jQuery) ? html[0] : html;
+    const messages = root?.querySelectorAll('div.chat-attack');
     if (!messages?.length) return;
     messages.forEach(message => {
+        const rows = Array.from(message.querySelectorAll('tr'));
+        const normalDamageInfo = [];
+        const criticalDamageInfo = [];
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (row.classList.contains('damage')) {
+                let j = i + 1;
+                let foundComponent = false;
+                while (j < rows.length && rows[j].querySelector('td.roll.damage.normal')) {
+                    foundComponent = true;
+                    const rollCell = rows[j].querySelector('td.roll.damage.normal a.inline-roll');
+                    const typeCell = rows[j].querySelector('td.damage-types');
+                    let value = null, types = [];
+                    if (rollCell) value = parseInt(rollCell.textContent.trim(), 10);
+                    if (typeCell) {
+                        types = Array.from(typeCell.querySelectorAll('.damage-type, .custom')).map(dt =>
+                            dt.getAttribute('data-tooltip')?.trim() || dt.textContent.trim()
+                        );
+                    }
+                    if (value !== null && types.length > 0) {
+                        normalDamageInfo.push({ damageType: types, totalDamage: value });
+                    }
+                    j++;
+                }
+                if (!foundComponent) {
+                    const normalRollElement = row.querySelector('td.roll.damage.normal a[data-tooltip]');
+                    let normalDamageTypes = [];
+                    const normalTDs = row.querySelectorAll('td.damage-types');
+                    if (normalTDs.length > 0) {
+                        normalDamageTypes = Array.from(normalTDs).flatMap(td =>
+                            Array.from(td.querySelectorAll('.damage-type, .custom')).map(dt =>
+                                dt.getAttribute('data-tooltip')?.trim() || dt.textContent.trim()
+                            )
+                        );
+                    } else {
+                        normalDamageTypes = Array.from(row.querySelectorAll('td.damage-types .damage-type, td.damage-types .custom'))
+                            .map(dt => dt.getAttribute('data-tooltip')?.trim() || dt.textContent.trim());
+                    }
+                    if (normalRollElement && normalDamageTypes.length > 0) {
+                        const totalDamage = parseInt(normalRollElement.textContent.trim(), 10);
+                        normalDamageInfo.push({ damageType: normalDamageTypes, totalDamage });
+                    }
+                    const criticalRollElement = row.querySelector('td.roll.damage.critical a[data-tooltip]');
+                    let criticalDamageTypes = [];
+                    const criticalTDs = row.querySelectorAll('td.damage-type');
+                    if (criticalTDs.length > 0) {
+                        criticalDamageTypes = Array.from(criticalTDs).flatMap(td =>
+                            Array.from(td.querySelectorAll('.damage-type, .custom')).map(dt =>
+                                dt.getAttribute('data-tooltip')?.trim() || dt.textContent.trim()
+                            )
+                        );
+                    } else {
+                        criticalDamageTypes = Array.from(row.querySelectorAll('td.damage-type .damage-type, td.damage-type .custom'))
+                            .map(dt => dt.getAttribute('data-tooltip')?.trim() || dt.textContent.trim());
+                    }
+                    if (criticalRollElement && criticalDamageTypes.length > 0) {
+                        const totalDamage = parseInt(criticalRollElement.textContent.trim(), 10);
+                        criticalDamageInfo.push({ damageType: criticalDamageTypes, totalDamage });
+                    }
+                }
+            }
+        }
+
         const sections = message.querySelectorAll('tr.damage > th, th.attack-damage');
-const rows = message.querySelectorAll('tr');
-
-const normalDamageInfo = [];
-const criticalDamageInfo = [];
-
-rows.forEach(row => {
-    const normalRollElement = row.querySelector('td.roll.damage.normal a[data-tooltip]');
-    const criticalRollElement = row.querySelector('td.roll.damage.critical a[data-tooltip]');
-    const normalDamageTypes = Array.from(row.querySelectorAll('td.damage-types .damage-type, td.damage-types .custom'))
-        .map(dt => dt.getAttribute('data-tooltip')?.trim() || dt.textContent.trim());
-        
-    const criticalDamageTypes = Array.from(row.querySelectorAll('td.damage-type .damage-type, td.damage-type .custom'))
-        .map(dt => dt.getAttribute('data-tooltip')?.trim() || dt.textContent.trim());
-    if (normalRollElement && normalDamageTypes.length > 0) {
-        const totalDamage = parseInt(normalRollElement.textContent.trim(), 10);
-        normalDamageInfo.push({ damageType: normalDamageTypes, totalDamage });
-    }
-    if (criticalRollElement && criticalDamageTypes.length > 0) {
-        const totalDamage = parseInt(criticalRollElement.textContent.trim(), 10);
-        criticalDamageInfo.push({ damageType: criticalDamageTypes, totalDamage });
-    }
-});
-
     
         sections.forEach((section, index) => {
             const applyDamageElements = section.querySelectorAll('a.inline-action[data-action="applyDamage"]');
@@ -79,7 +120,8 @@ rows.forEach(row => {
 }
 
 export async function addClusteredShotsButton(html) {
-    const cards = html[0]?.querySelectorAll('div.pf1.chat-card.item-card, div.chat-card.item-card.pf1');
+    const root = (typeof jQuery !== 'undefined' && html instanceof jQuery) ? html[0] : html;
+    const cards = root?.querySelectorAll('div.pf1.chat-card.item-card, div.chat-card.item-card.pf1');
     
     if (cards?.length) {
         for (const card of cards) {
