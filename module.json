@@ -36,6 +36,7 @@
     "scripts/config.js",
     "scripts/damageSettingsForms.js"
   ],
+  "socket": true,
   "styles": [
     "templates/css/damage-type-form.css", "templates/css/damage-priority-form.css", "templates/css/damage-settings-form.css"
   ],
